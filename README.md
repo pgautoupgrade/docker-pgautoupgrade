@@ -27,15 +27,20 @@ files.
 
 ## Testing the container image
 
-The script `test.sh` will create an initial Redash database
-using PostgreSQL 9.5, then start Redash using the above
-"automatic updating" PostgreSQL container.
-
-The script should output a success message at the end, and
-will leave a new Redash installation running at http://localhost:5000
-
-You can shut down these running Redash containers using:
+To run the tests, use:
 
 ```
-$ test.sh down
+$ test.sh
 ```
+
+The test script creates an initial PostgreSQL database for
+Redash using an older PG version, then starts Redash using
+the above "automatic updating" PostgreSQL container to
+update the database to the latest PostgreSQL version.
+
+It then checks that the database files were indeed updated
+to the newest PostgreSQL release, and output an obvious
+SUCCESS/FAILURE message for that loop.
+
+The test runs in a loop, testing (in sequence) PostgreSQL
+versions 9.5, 9.6, 10.x, 11.x, 12.x, 13.x, and 14.x.
