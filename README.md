@@ -39,7 +39,7 @@ the above "automatic updating" PostgreSQL container to
 update the database to the latest PostgreSQL version.
 
 It then checks that the database files were indeed updated
-to the newest PostgreSQL release, and output an obvious
+to the newest PostgreSQL release, and outputs an obvious
 SUCCESS/FAILURE message for that loop.
 
 The test runs in a loop, testing (in sequence) PostgreSQL
