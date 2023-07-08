@@ -43,7 +43,7 @@ services:
     image: postgres:9.5-alpine
     env_file: .env
     volumes:
-      - ./pgstuff/postgres-data:/var/lib/postgresql/data
+      - ./postgres-data:/var/lib/postgresql/data
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]

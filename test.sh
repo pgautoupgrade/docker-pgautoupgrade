@@ -9,9 +9,9 @@ test_run() {
     V=$1
 
     # Delete any existing test PostgreSQL data
-    if [ -d pgstuff/postgres-data ]; then
+    if [ -d postgres-data ]; then
         echo "Removing old PostgreSQL data from test directory"
-        sudo rm -rf pgstuff/postgres-data
+        sudo rm -rf postgres-data
     fi
 
     # Create the PostgreSQL database using PG 9.5
@@ -21,7 +21,7 @@ test_run() {
     docker-compose -f docker-compose-pgauto.yml up -d
 
     # Verify the PostgreSQL data files are now version 15
-    PGVER=$(sudo cat pgstuff/postgres-data/PG_VERSION)
+    PGVER=$(sudo cat postgres-data/PG_VERSION)
     if [ "$PGVER" != "15" ]; then
         echo
         echo "***************************************************************"
