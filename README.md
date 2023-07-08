@@ -18,7 +18,7 @@ it out manually (not great): https://github.com/docker-library/postgres/issues/3
 To build the docker image, use:
 
 ```
-$ build.sh
+$ ./build.sh
 ```
 
 This will take a few minutes to create the "pgautoupgrade:latest"
@@ -30,7 +30,7 @@ files.
 To run the tests, use:
 
 ```
-$ test.sh
+$ ./test.sh
 ```
 
 The test script creates an initial PostgreSQL database for
