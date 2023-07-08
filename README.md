@@ -10,7 +10,5 @@ normal.
 
 The reason this Docker container is needed, is because
 the official Docker PostgreSQL container has no ability
-to handle version upgrades, so people need to figure it
-out manually (not great):
-
-&nbsp; &nbsp; https://github.com/docker-library/postgres/issues/37
+to handle version upgrades, which leaves people to figure
+it out manually (not great): https://github.com/docker-library/postgres/issues/37
