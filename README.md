@@ -12,3 +12,30 @@ The reason this Docker container is needed, is because
 the official Docker PostgreSQL container has no ability
 to handle version upgrades, which leaves people to figure
 it out manually (not great): https://github.com/docker-library/postgres/issues/37
+
+## Building the container
+
+To build the docker image, use:
+
+```
+$ build.sh
+```
+
+This will take a few minutes to create the "pgautoupgrade:latest"
+docker container, that you can use in your docker-compose.yml
+files.
+
+## Testing the container image
+
+The script `test.sh` will create an initial Redash database
+using PostgreSQL 9.5, then start Redash using the above
+"automatic updating" PostgreSQL container.
+
+The script should output a success message at the end, and
+will leave a new Redash installation running at http://localhost:5000
+
+You can shut down these running Redash containers using:
+
+```
+$ test.sh down
+```
