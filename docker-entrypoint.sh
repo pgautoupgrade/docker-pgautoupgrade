@@ -390,8 +390,8 @@ _main() {
 		mv -v /var/lib/postgresql/tempdata/* /var/lib/postgresql/data
 		rmdir /var/lib/postgresql/tempdata
 
-		# Re-use the pg_hba.conf from the old data directory
-		cp -f /var/lib/postgresql/olddata/pg_hba.conf /var/lib/postgresql/data/
+		# Re-use the pg_hba.conf and pg_ident.conf from the old data directory
+		cp -f /var/lib/postgresql/olddata/pg_hba.conf /var/lib/postgresql/olddata/pg_ident.conf /var/lib/postgresql/data/
 	fi
 
 	exec "$@"
