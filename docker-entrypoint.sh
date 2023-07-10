@@ -345,7 +345,7 @@ _main() {
 
 	# Get the version of the PostgreSQL data files
 	PGVER=15
-	if [ -f "$PGDATA/PG_VERSION" ]; then
+	if [ -s "$PGDATA/PG_VERSION" ]; then
 		PGVER=$(cat "$PGDATA/PG_VERSION")
 	fi
 
@@ -355,58 +355,57 @@ _main() {
 		echo "Performing PG upgrade on version $PGVER database files"
 		echo "******************************************************"
 
+		# Move the PostgreSQL data files into a subdirectory of the mount point
+		echo "Moving the old database files prior to pg_upgrade"
+		mkdir /var/lib/postgresql/tempdir
+		mv -v /var/lib/postgresql/data/* /var/lib/postgresql/tempdir/
+		mkdir /var/lib/postgresql/data/old /var/lib/postgresql/data/new
+		chmod 0700 /var/lib/postgresql/data/old /var/lib/postgresql/data/new
+		mv -v /var/lib/postgresql/tempdir/* /var/lib/postgresql/data/old/
+
 		# Initialise a new PG 15 data directory in a temporary location
-		/usr/local/bin/initdb /var/lib/postgresql/tempdata
+		echo "Initialising PostgreSQL 15 data directory"
+		/usr/local/bin/initdb /var/lib/postgresql/data/new/
 
 		# Perform the data directory upgrade
 		if [ "$PGVER" = "9.5" ]; then
 			echo "PostgreSQL 9.5 database files found, upgrading to PostgreSQL 15"
-			/usr/local/bin/pg_upgrade -d /var/lib/postgresql/data -D /var/lib/postgresql/tempdata -b /usr/local-pg9.5/bin -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --link -d /var/lib/postgresql/data/old -D /var/lib/postgresql/data/new -b /usr/local-pg9.5/bin -B /usr/local/bin
 		elif [ "$PGVER" = "9.6" ]; then
 			echo "PostgreSQL 9.6 database files found, upgrading to PostgreSQL 15"
-			/usr/local/bin/pg_upgrade -d /var/lib/postgresql/data -D /var/lib/postgresql/tempdata -b /usr/local-pg9.6/bin -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --link -d /var/lib/postgresql/data/old -D /var/lib/postgresql/data/new -b /usr/local-pg9.6/bin -B /usr/local/bin
 		elif [ "$PGVER" = "10" ]; then
 			echo "PostgreSQL 10 database files found, upgrading to PostgreSQL 15"
-			/usr/local/bin/pg_upgrade -d /var/lib/postgresql/data -D /var/lib/postgresql/tempdata -b /usr/local-pg10/bin -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --link -d /var/lib/postgresql/data/old -D /var/lib/postgresql/data/new -b /usr/local-pg10/bin -B /usr/local/bin
 		elif [ "$PGVER" = "11" ]; then
 			echo "PostgreSQL 11 database files found, upgrading to PostgreSQL 15"
-			/usr/local/bin/pg_upgrade -d /var/lib/postgresql/data -D /var/lib/postgresql/tempdata -b /usr/local-pg11/bin -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --link -d /var/lib/postgresql/data/old -D /var/lib/postgresql/data/new -b /usr/local-pg11/bin -B /usr/local/bin
 		elif [ "$PGVER" = "12" ]; then
 			echo "PostgreSQL 12 database files found, upgrading to PostgreSQL 15"
-			/usr/local/bin/pg_upgrade -d /var/lib/postgresql/data -D /var/lib/postgresql/tempdata -b /usr/local-pg12/bin -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --link -d /var/lib/postgresql/data/old -D /var/lib/postgresql/data/new -b /usr/local-pg12/bin -B /usr/local/bin
 		elif [ "$PGVER" = "13" ]; then
 			echo "PostgreSQL 13 database files found, upgrading to PostgreSQL 15"
-			/usr/local/bin/pg_upgrade -d /var/lib/postgresql/data -D /var/lib/postgresql/tempdata -b /usr/local-pg13/bin -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --link -d /var/lib/postgresql/data/old -D /var/lib/postgresql/data/new -b /usr/local-pg13/bin -B /usr/local/bin
 		elif [ "$PGVER" = "14" ]; then
 			echo "PostgreSQL 14 database files found, upgrading to PostgreSQL 15"
-			/usr/local/bin/pg_upgrade -d /var/lib/postgresql/data -D /var/lib/postgresql/tempdata -b /usr/local-pg14/bin -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --link -d /var/lib/postgresql/data/old -D /var/lib/postgresql/data/new -b /usr/local-pg14/bin -B /usr/local/bin
 		else
 			echo "Unknown version of PostgreSQL database files found, aborting completely"
 			exit 9
 		fi
 
 		# Move the new database files into place
-		mkdir /var/lib/postgresql/olddata
-		echo "Moving the old database files to a backup dir"
-		mv -v /var/lib/postgresql/data/* /var/lib/postgresql/olddata
-		echo "Moving the new database files to the active dir"
-		mv -v /var/lib/postgresql/tempdata/* /var/lib/postgresql/data
-		rmdir /var/lib/postgresql/tempdata
+		echo "Moving the new updated database files to the active directory"
+		mv -v /var/lib/postgresql/data/new/* /var/lib/postgresql/data/
 
 		# Re-use the pg_hba.conf and pg_ident.conf from the old data directory
-		cp -f /var/lib/postgresql/olddata/pg_hba.conf /var/lib/postgresql/olddata/pg_ident.conf /var/lib/postgresql/data/
+		cp -f /var/lib/postgresql/data/old/pg_hba.conf /var/lib/postgresql/data/old/pg_ident.conf /var/lib/postgresql/data/
+
+		# Remove the left over database files
+		rm -rf /var/lib/postgresql/tempdir /var/lib/postgresql/data/old /var/lib/postgresql/data/new
 	fi
 
 	exec "$@"
-	STATUSCODE=$?
-
-	if [ $STATUSCODE -ne 0 ]; then
-		echo "**********************************************"
-		echo "PostgreSQL exited with status code $STATUSCODE"
-		echo "**********************************************"
-
-		# TODO: Put the database files back the way they were
-	fi
 }
 
 if ! _is_sourced; then
