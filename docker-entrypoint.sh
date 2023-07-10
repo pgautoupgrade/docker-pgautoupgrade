@@ -344,7 +344,10 @@ _main() {
 	fi
 
 	# Get the version of the PostgreSQL data files
-	PGVER=`cat "$PGDATA/PG_VERSION"`
+	PGVER=15
+	if [ -f "$PGDATA/PG_VERSION" ]; then
+		PGVER=$(cat "$PGDATA/PG_VERSION")
+	fi
 
 	# If the version of PostgreSQL isn't 15, then upgrade the data files
 	if [ "$PGVER" != "15" ]; then
