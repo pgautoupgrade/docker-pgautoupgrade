@@ -32,7 +32,7 @@ services:
       QUEUES: "queries"
       WORKERS_COUNT: 2
   redis:
-    image: redis:5.0-alpine
+    image: redis:7-alpine
     restart: always
     healthcheck:
       test: redis-cli -h 127.0.0.1 ping | grep -q PONG
