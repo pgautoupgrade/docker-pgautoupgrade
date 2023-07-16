@@ -361,13 +361,18 @@ _main() {
 		echo "Performing PG upgrade on version $PGVER database files"
 		echo "******************************************************"
 
+		# Don't automatically abort on non-0 exit status, as that messes with these upcoming mv commands
+		set +e
+
 		# Move the PostgreSQL data files into a subdirectory of the mount point
 		echo "Moving the old database files prior to pg_upgrade"
-		mkdir /var/lib/postgresql/tempdir
-		mv -v /var/lib/postgresql/data/* /var/lib/postgresql/tempdir/
-		mkdir /var/lib/postgresql/data/old /var/lib/postgresql/data/new
+		mkdir /var/lib/postgresql/data/old
+		mv -v /var/lib/postgresql/data/* /var/lib/postgresql/data/old/
+		mkdir /var/lib/postgresql/data/new
 		chmod 0700 /var/lib/postgresql/data/old /var/lib/postgresql/data/new
-		mv -v /var/lib/postgresql/tempdir/* /var/lib/postgresql/data/old/
+
+		# Return the error handling back to automatically aborting on non-0 exit status
+		set -e
 
 		# Perform the data directory upgrade
 		if [ "$PGVER" = "9.5" ]; then
@@ -425,7 +430,7 @@ _main() {
 		cp -f /var/lib/postgresql/data/old/pg_hba.conf /var/lib/postgresql/data/old/pg_ident.conf /var/lib/postgresql/data/
 
 		# Remove the left over database files
-		rm -rf /var/lib/postgresql/tempdir /var/lib/postgresql/data/old /var/lib/postgresql/data/new
+		rm -rf /var/lib/postgresql/data/old /var/lib/postgresql/data/new /var/lib/postgresql/data/delete_old_cluster.sh
 	fi
 
 	exec "$@"
