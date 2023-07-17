@@ -20,6 +20,25 @@ This Docker container does an in-place upgrade of the database
 data, so if something goes wrong you are expected to already
 have backups you can restore from.
 
+## How to use this container
+
+This container is on Docker Hub:
+
+https://hub.docker.com/r/pgautoupgrade/pgautoupgrade
+
+To always use the latest version of PostgreSQL, use
+the tag `latest`:
+
+    pgautoupgrade/pgautoupgrade:latest
+
+If you instead want to run a specific version of PostgreSQL
+then pick a matching tag on our Docker Hub.  For example,
+to use PostgreSQL 15 you can use:
+
+    pgautoupgrade/pgautoupgrade:15-alpine3.8
+
+# For Developers
+
 ## Building the container
 
 To build the docker image, use:
