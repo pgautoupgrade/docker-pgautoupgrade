@@ -460,7 +460,7 @@ _main() {
 			rm -rf "${OLD}" "${NEW}" ~/delete_old_cluster.sh
 		fi
 
-		### The main pgautoupgrade scripting end here ###
+		### The main pgautoupgrade scripting ends here ###
 	fi
 
 	# For development of pgautoupgrade.  This spot leaves the container running, after the pgautoupgrade scripting has
