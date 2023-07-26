@@ -51,6 +51,38 @@ This will take a few minutes to create the "pgautoupgrade:latest"
 docker container, that you can use in your docker-compose.yml
 files.
 
+## Breakpoints in the container
+
+There are (at present) two predefined er... "breakpoints"
+in the container.  When you run the container with either
+of them, then the container will start up and keep running,
+but the docker-entrypoint script will pause at the chosen
+location.
+
+This way, you can `docker exec` into the running container to
+try things out, do development, testing, debugging, etc.
+
+### Before breakpoint
+
+The `before` breakpoint stops just before the `pg_upgrade`
+part of the script runs, so you can try alternative things
+instead.
+
+```
+$ ./run.sh -e PGAUTO_DEVEL=before
+```
+
+### Server breakpoint
+
+The `server` breakpoint stops after the existing `pg_upgrade`
+script has run, but before the PostgreSQL server starts.  Useful
+if you want to investigate the results of the upgrade prior to
+PostgreSQL acting on them.
+
+```
+$ ./run.sh -e PGAUTO_DEVEL=server
+```
+
 ## Testing the container image
 
 To run the tests, use:
