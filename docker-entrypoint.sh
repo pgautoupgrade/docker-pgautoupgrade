@@ -279,7 +279,7 @@ docker_temp_server_stop() {
 # Initialise PG data directory in a temp location with a specific locale
 initdb_locale() {
 	echo "Initialising PostgreSQL 15 data directory"
-	/usr/local/bin/initdb --locale=${1} /var/lib/postgresql/data/new/
+	/usr/local/bin/initdb --username="${POSTGRES_USER}" --locale=${1} /var/lib/postgresql/data/new/
 }
 
 # check arguments for an option that would cause postgres to stop
@@ -407,43 +407,43 @@ _main() {
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg9.5/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
-				/usr/local/bin/pg_upgrade -U postgres --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.5/bin -B /usr/local/bin
+				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.5/bin -B /usr/local/bin
 			elif [ "$PGVER" = "9.6" ]; then
 				echo "PostgreSQL 9.6 database files found, upgrading to PostgreSQL 15"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg9.6/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
-				/usr/local/bin/pg_upgrade -U postgres --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.6/bin -B /usr/local/bin
+				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.6/bin -B /usr/local/bin
 			elif [ "$PGVER" = "10" ]; then
 				echo "PostgreSQL 10 database files found, upgrading to PostgreSQL 15"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg10/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
-				/usr/local/bin/pg_upgrade -U postgres --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg10/bin -B /usr/local/bin
+				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg10/bin -B /usr/local/bin
 			elif [ "$PGVER" = "11" ]; then
 				echo "PostgreSQL 11 database files found, upgrading to PostgreSQL 15"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg11/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
-				/usr/local/bin/pg_upgrade -U postgres --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg11/bin -B /usr/local/bin
+				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg11/bin -B /usr/local/bin
 			elif [ "$PGVER" = "12" ]; then
 				echo "PostgreSQL 12 database files found, upgrading to PostgreSQL 15"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg12/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
-				/usr/local/bin/pg_upgrade -U postgres --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg12/bin -B /usr/local/bin
+				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg12/bin -B /usr/local/bin
 			elif [ "$PGVER" = "13" ]; then
 				echo "PostgreSQL 13 database files found, upgrading to PostgreSQL 15"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg13/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
-				/usr/local/bin/pg_upgrade -U postgres --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg13/bin -B /usr/local/bin
+				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg13/bin -B /usr/local/bin
 			elif [ "$PGVER" = "14" ]; then
 				echo "PostgreSQL 14 database files found, upgrading to PostgreSQL 15"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg14/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
-				/usr/local/bin/pg_upgrade -U postgres --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg14/bin -B /usr/local/bin
+				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg14/bin -B /usr/local/bin
 			else
 				echo "Unknown version of PostgreSQL database files found, aborting completely"
 				exit 9
