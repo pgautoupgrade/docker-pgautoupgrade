@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+FAILURE=0
+
 # Stop any existing containers from previous test runs
 test_down() {
     docker-compose -f test/docker-compose-pgauto.yml down
@@ -35,6 +37,7 @@ test_run() {
         echo "Automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
         echo "****************************************************************************"
         echo
+        FAILURE=1
     else
         echo
         echo "*******************************************************************************"
@@ -82,3 +85,14 @@ test_run 11 15
 test_run 12 15
 test_run 13 15
 test_run 14 15
+
+if [ "${FAILURE}" -ne 0 ]; then
+	echo
+	echo "FAILURE: Automatic upgrade of PostgreSQL failed in one of the tests.  Please investigate."
+	echo
+	exit 1
+else
+	echo
+	echo "SUCCESS: Automatic upgrade testing of PostgreSQL to PG 13, 14, and 15 passed without issue."
+	echo
+fi
