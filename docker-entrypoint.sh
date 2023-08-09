@@ -360,23 +360,24 @@ _main() {
 		### The main pgautoupgrade scripting starts here ###
 
 		# Get the version of the PostgreSQL data files
-		PGVER=15
+		echo "Target PG version is ${PGTARGET}"
+		local PGVER=${PGTARGET}
 		if [ -s "$PGDATA/PG_VERSION" ]; then
 			PGVER=$(cat "$PGDATA/PG_VERSION")
 		fi
 
 		# If the version of PostgreSQL isn't 15, then upgrade the data files
-		if [ "$PGVER" != "15" ]; then
-			echo "******************************************************"
-			echo "Performing PG upgrade on version $PGVER database files"
-			echo "******************************************************"
+		if [ "${PGVER}" != "${PGTARGET}" ]; then
+			echo "*****************************************************************************************"
+			echo "Performing PG upgrade on version ${PGVER} database files.  Upgrading to version ${PGTARGET}"
+			echo "*****************************************************************************************"
 
 			# Don't automatically abort on non-0 exit status, as that messes with these upcoming mv commands
 			set +e
 
 			# Move the PostgreSQL data files into a subdirectory of the mount point
-			OLD="${PGDATA}/old"
-			NEW="${PGDATA}/new"
+			local OLD="${PGDATA}/old"
+			local NEW="${PGDATA}/new"
 			echo "Moving the old database files prior to pg_upgrade"
 			mkdir "${OLD}"
 			if [ ! -d "${OLD}" ]; then
@@ -402,49 +403,60 @@ _main() {
 			set -e
 
 			# Perform the data directory upgrade
-			if [ "$PGVER" = "9.5" ]; then
-				echo "PostgreSQL 9.5 database files found, upgrading to PostgreSQL 15"
+			local RECOGNISED=0
+			if [ "${PGVER}" = "9.5" ]; then
+				RECOGNISED=1
+				echo "PostgreSQL 9.5 database files found, upgrading to PostgreSQL ${PGTARGET}"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg9.5/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
 				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.5/bin -B /usr/local/bin
-			elif [ "$PGVER" = "9.6" ]; then
-				echo "PostgreSQL 9.6 database files found, upgrading to PostgreSQL 15"
+			elif [ "${PGVER}" = "9.6" ]; then
+				RECOGNISED=1
+				echo "PostgreSQL 9.6 database files found, upgrading to PostgreSQL ${PGTARGET}"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg9.6/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
 				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.6/bin -B /usr/local/bin
-			elif [ "$PGVER" = "10" ]; then
-				echo "PostgreSQL 10 database files found, upgrading to PostgreSQL 15"
+			elif [ "${PGVER}" = "10" ]; then
+				RECOGNISED=1
+				echo "PostgreSQL 10 database files found, upgrading to PostgreSQL ${PGTARGET}"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg10/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
 				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg10/bin -B /usr/local/bin
-			elif [ "$PGVER" = "11" ]; then
-				echo "PostgreSQL 11 database files found, upgrading to PostgreSQL 15"
+			elif [ "${PGVER}" = "11" ]; then
+				RECOGNISED=1
+				echo "PostgreSQL 11 database files found, upgrading to PostgreSQL ${PGTARGET}"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg11/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
 				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg11/bin -B /usr/local/bin
-			elif [ "$PGVER" = "12" ]; then
-				echo "PostgreSQL 12 database files found, upgrading to PostgreSQL 15"
+			elif [ "${PGVER}" = "12" ]; then
+				RECOGNISED=1
+				echo "PostgreSQL 12 database files found, upgrading to PostgreSQL ${PGTARGET}"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg12/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
 				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg12/bin -B /usr/local/bin
-			elif [ "$PGVER" = "13" ]; then
-				echo "PostgreSQL 13 database files found, upgrading to PostgreSQL 15"
+			fi
+			if [ "${PGTARGET}" -gt 13 ] && [ "${PGVER}" = "13" ]; then
+				RECOGNISED=1
+				echo "PostgreSQL 13 database files found, upgrading to PostgreSQL ${PGTARGET}"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg13/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
 				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg13/bin -B /usr/local/bin
-			elif [ "$PGVER" = "14" ]; then
-				echo "PostgreSQL 14 database files found, upgrading to PostgreSQL 15"
+			fi
+			if [ "${PGTARGET}" -gt 14 ] && [ "${PGVER}" = "14" ]; then
+				RECOGNISED=1
+				echo "PostgreSQL 14 database files found, upgrading to PostgreSQL ${PGTARGET}"
 				# Initialise the new data directory using the same collation as the old one
 				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg14/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 				initdb_locale "${COLL}"
 				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg14/bin -B /usr/local/bin
-			else
+			fi
+			if [ "${RECOGNISED}" -ne 1 ]; then
 				echo "Unknown version of PostgreSQL database files found, aborting completely"
 				exit 9
 			fi

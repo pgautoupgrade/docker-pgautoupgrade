@@ -40,7 +40,7 @@ services:
       timeout: 5s
       retries: 5
   postgres:
-    image: pgautoupgrade/pgautoupgrade:dev
+    image: pgautoupgrade/pgautoupgrade:${TARGET_TAG:-dev}
     env_file: .env
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
