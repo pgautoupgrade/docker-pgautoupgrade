@@ -360,7 +360,6 @@ _main() {
 		### The main pgautoupgrade scripting starts here ###
 
 		# Get the version of the PostgreSQL data files
-		echo "Target PG version is ${PGTARGET}"
 		local PGVER=${PGTARGET}
 		if [ -s "$PGDATA/PG_VERSION" ]; then
 			PGVER=$(cat "$PGDATA/PG_VERSION")
