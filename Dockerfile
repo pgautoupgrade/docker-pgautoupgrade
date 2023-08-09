@@ -12,10 +12,8 @@ ARG PGTARGET
 # Where we'll do all our compiling and similar
 ENV BUILD_ROOT /buildroot
 
-# Make the directory for building
+# Make the directory for building, and set it as the default for the following Docker commands
 RUN mkdir ${BUILD_ROOT}
-
-# Use it as the default directory for the following Docker commands
 WORKDIR ${BUILD_ROOT}
 
 # Download the source code for previous PG releases
@@ -75,12 +73,12 @@ RUN if [ ${PGTARGET} -gt 13 ]; then cd postgresql-13.* && \
     ./configure --prefix=/usr/local-pg13 --with-openssl=no --without-readline --with-icu --enable-debug=no CFLAGS="-Os" && \
     make -j12 && \
     make install && \
-    rm -rf /usr/local-pg13/include; fi
+    rm -rf /usr/local-pg13/include; else mkdir /usr/local-pg13; fi
 RUN if [ ${PGTARGET} -gt 14 ]; then cd postgresql-14.* && \
     ./configure --prefix=/usr/local-pg14 --with-openssl=no --without-readline --with-icu --with-lz4 --enable-debug=no CFLAGS="-Os" && \
     make -j12 && \
     make install && \
-    rm -rf /usr/local-pg14/include; fi
+    rm -rf /usr/local-pg14/include; else mkdir /usr/local-pg14; fi
 
 # Use the PostgreSQL Alpine image as our output image base
 FROM postgres:${PGTARGET}-alpine3.18
@@ -96,6 +94,10 @@ COPY --from=build /usr/local-pg11 /usr/local-pg11
 COPY --from=build /usr/local-pg12 /usr/local-pg12
 COPY --from=build /usr/local-pg13 /usr/local-pg13
 COPY --from=build /usr/local-pg14 /usr/local-pg14
+
+# Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
+RUN if [ ${PGTARGET} -eq 13 ]; then rmdir /usr/local-pg13 /usr/local-pg14; fi
+RUN if [ ${PGTARGET} -eq 14 ]; then rmdir /usr/local-pg14; fi
 
 # Install locale
 RUN apk update && \
