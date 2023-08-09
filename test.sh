@@ -6,7 +6,8 @@ test_down() {
 }
 
 test_run() {
-    V=$1
+    VERSION=$1
+    TARGET=$2
 
     # Delete any existing test PostgreSQL data
     if [ -d postgres-data ]; then
@@ -14,25 +15,31 @@ test_run() {
         sudo rm -rf postgres-data
     fi
 
-    # Create the PostgreSQL database using PG 9.5
-    docker-compose -f docker-compose-pg${V}.yml run --rm server create_db
+    # Create the PostgreSQL database using a specific version of PostgreSQL
+    docker-compose -f "docker-compose-pg${VERSION}.yml" run --rm server create_db
 
-    # Start Redash normally, using the "autoupdate" version of PostgreSQL
-    docker-compose -f docker-compose-pgauto.yml up -d
+    # Start Redash normally, using an "autoupdate" version of PostgreSQL
+    if [ "${TARGET}" = "15" ]; then
+      docker-compose -f docker-compose-pgauto.yml up -d
+    elif [ "${TARGET}" = "14" ]; then
+      TARGET_TAG=14-dev docker-compose -f docker-compose-pgauto.yml up -d
+    elif [ "${TARGET}" = "13" ]; then
+      TARGET_TAG=13-dev docker-compose -f docker-compose-pgauto.yml up -d
+    fi
 
-    # Verify the PostgreSQL data files are now version 15
+    # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat postgres-data/PG_VERSION)
-    if [ "$PGVER" != "15" ]; then
+    if [ "$PGVER" != "${TARGET}" ]; then
         echo
-        echo "***************************************************************"
-        echo "Automatic upgrade of PostgreSQL from version ${V} to 15 FAILED!"
-        echo "***************************************************************"
+        echo "****************************************************************************"
+        echo "Automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
+        echo "****************************************************************************"
         echo
     else
         echo
-        echo "******************************************************************"
-        echo "Automatic upgrade of PostgreSQL from version ${V} to 15 SUCCEEDED!"
-        echo "******************************************************************"
+        echo "*******************************************************************************"
+        echo "Automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} SUCCEEDED!"
+        echo "*******************************************************************************"
         echo
     fi
 
@@ -50,13 +57,28 @@ if [ "$1" = "down" ]; then
 fi
 
 # Change into the test directory
-cd test
+cd test || exit 1
+
+# Testing upgrading from each major PG version directly to PG 13
+test_run 9.5 13
+test_run 9.6 13
+test_run 10 13
+test_run 11 13
+test_run 12 13
+
+# Testing upgrading from each major PG version directly to PG 14
+test_run 9.5 14
+test_run 9.6 14
+test_run 10 14
+test_run 11 14
+test_run 12 14
+test_run 13 14
 
 # Testing upgrading from each major PG version directly to PG 15
-test_run 9.5
-test_run 9.6
-test_run 10
-test_run 11
-test_run 12
-test_run 13
-test_run 14
+test_run 9.5 15
+test_run 9.6 15
+test_run 10 15
+test_run 11 15
+test_run 12 15
+test_run 13 15
+test_run 14 15

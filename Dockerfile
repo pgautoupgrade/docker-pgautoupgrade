@@ -22,8 +22,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v9.5.25/postgresql-9.5.25.tar.bz2
     wget https://ftp.postgresql.org/pub/source/v10.23/postgresql-10.23.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v11.20/postgresql-11.20.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v12.15/postgresql-12.15.tar.bz2
-RUN if [ ${PGTARGET} -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.11/postgresql-13.11.tar.bz2; fi
-RUN if [ ${PGTARGET} -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.8/postgresql-14.8.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.11/postgresql-13.11.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.8/postgresql-14.8.tar.bz2; fi
 
 # Extract the source code
 RUN tar -xf postgresql-9.5*.tar.bz2 && \
@@ -31,8 +31,8 @@ RUN tar -xf postgresql-9.5*.tar.bz2 && \
     tar -xf postgresql-10*.tar.bz2 && \
     tar -xf postgresql-11*.tar.bz2 && \
     tar -xf postgresql-12*.tar.bz2
-RUN if [ ${PGTARGET} -gt 13 ]; then tar -xf postgresql-13*.tar.bz2; fi
-RUN if [ ${PGTARGET} -gt 14 ]; then tar -xf postgresql-14*.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 13 ]; then tar -xf postgresql-13*.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 14 ]; then tar -xf postgresql-14*.tar.bz2; fi
 
 # Install things needed for development
 # We might want to install "alpine-sdk" instead of "build-base", if build-base
@@ -69,12 +69,12 @@ RUN cd postgresql-12.* && \
     make -j12 && \
     make install && \
     rm -rf /usr/local-pg12/include
-RUN if [ ${PGTARGET} -gt 13 ]; then cd postgresql-13.* && \
+RUN if [ "${PGTARGET}" -gt 13 ]; then cd postgresql-13.* && \
     ./configure --prefix=/usr/local-pg13 --with-openssl=no --without-readline --with-icu --enable-debug=no CFLAGS="-Os" && \
     make -j12 && \
     make install && \
     rm -rf /usr/local-pg13/include; else mkdir /usr/local-pg13; fi
-RUN if [ ${PGTARGET} -gt 14 ]; then cd postgresql-14.* && \
+RUN if [ "${PGTARGET}" -gt 14 ]; then cd postgresql-14.* && \
     ./configure --prefix=/usr/local-pg14 --with-openssl=no --without-readline --with-icu --with-lz4 --enable-debug=no CFLAGS="-Os" && \
     make -j12 && \
     make install && \
@@ -96,8 +96,8 @@ COPY --from=build /usr/local-pg13 /usr/local-pg13
 COPY --from=build /usr/local-pg14 /usr/local-pg14
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
-RUN if [ ${PGTARGET} -eq 13 ]; then rmdir /usr/local-pg13 /usr/local-pg14; fi
-RUN if [ ${PGTARGET} -eq 14 ]; then rmdir /usr/local-pg14; fi
+RUN if [ "${PGTARGET}" -eq 13 ]; then rmdir /usr/local-pg13 /usr/local-pg14; fi
+RUN if [ "${PGTARGET}" -eq 14 ]; then rmdir /usr/local-pg14; fi
 
 # Install locale
 RUN apk update && \
@@ -107,10 +107,12 @@ RUN apk update && \
 ## FIXME: Only useful while developing this Dockerfile
 ##RUN apk add man-db man-pages-posix
 
+# Pass the PG build target through to the running image
+ENV PGTARGET=${PGTARGET}
+
+# Set up the script run by the container when it starts
 WORKDIR /var/lib/postgresql
-
 COPY docker-entrypoint.sh /usr/local/bin/
-
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 CMD ["postgres"]
