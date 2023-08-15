@@ -41,10 +41,10 @@ to use PostgreSQL 15 you can use:
 
 ## Building the container
 
-To build the docker image, use:
+To build the development docker image, use:
 
 ```
-$ ./build.sh
+$ make dev
 ```
 
 This will take a few minutes to create the "pgautoupgrade:latest"
