@@ -69,7 +69,7 @@ part of the script runs, so you can try alternative things
 instead.
 
 ```
-$ ./run.sh -e PGAUTO_DEVEL=before
+$ make before
 ```
 
 ### Server breakpoint
@@ -80,7 +80,7 @@ if you want to investigate the results of the upgrade prior to
 PostgreSQL acting on them.
 
 ```
-$ ./run.sh -e PGAUTO_DEVEL=server
+$ make server
 ```
 
 ## Testing the container image
@@ -88,7 +88,7 @@ $ ./run.sh -e PGAUTO_DEVEL=server
 To run the tests, use:
 
 ```
-$ ./test.sh
+$ make test
 ```
 
 The test script creates an initial PostgreSQL database for
