@@ -279,7 +279,7 @@ docker_temp_server_stop() {
 # Initialise PG data directory in a temp location with a specific locale
 initdb_locale() {
 	echo "Initialising PostgreSQL 15 data directory"
-	/usr/local/bin/initdb --username="${POSTGRES_USER}" --locale=${1} /var/lib/postgresql/data/new/
+	/usr/local/bin/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} /var/lib/postgresql/data/new/
 }
 
 # check arguments for an option that would cause postgres to stop
@@ -361,17 +361,41 @@ _main() {
 	else
 		### The main pgautoupgrade scripting starts here ###
 
+		echo "************************************"
+		echo "PostgreSQL data directory: ${PGDATA}"
+		echo "************************************"
+
 		# Get the version of the PostgreSQL data files
 		local PGVER=${PGTARGET}
-		if [ -s "$PGDATA/PG_VERSION" ]; then
-			PGVER=$(cat "$PGDATA/PG_VERSION")
+		if [ -s "${PGDATA}/PG_VERSION" ]; then
+			PGVER=$(cat "${PGDATA}/PG_VERSION")
 		fi
 
 		# If the version of PostgreSQL isn't 15, then upgrade the data files
 		if [ "${PGVER}" != "${PGTARGET}" ]; then
-			echo "*******************************************************************************************"
-			echo "Performing PG upgrade on version ${PGVER} database files.  Upgrading to version ${PGTARGET}"
-			echo "*******************************************************************************************"
+			# The database files don't match the running version, so ensure they're a version we can upgrade
+			local RECOGNISED=0
+			local OLDPATH=unset
+			if [ "${PGVER}" = "9.5" ] || [ "${PGVER}" = "9.6" ] || [ "${PGVER}" = "10" ] || [ "${PGVER}" = "11" ] || [ "${PGVER}" = "12" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET}" -gt 13 ] && [ "${PGVER}" = "13" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET}" -gt 14 ] && [ "${PGVER}" = "14" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${RECOGNISED}" -eq 1 ]; then
+				OLDPATH="/usr/local-pg${PGVER}"
+				echo "*******************************************************************************************"
+				echo "Performing PG upgrade on version ${PGVER} database files.  Upgrading to version ${PGTARGET}"
+				echo "*******************************************************************************************"
+			else
+				echo "****************************************************************************"
+				echo "Unrecognised version of PostgreSQL database files found, aborting completely"
+				echo "****************************************************************************"
+				exit 9
+			fi
 
 			# Check for presence of old/new directories, indicating a failed previous autoupgrade
 			echo "----------------------------------------------------------------------"
@@ -409,11 +433,17 @@ _main() {
 				echo "*********************************************************************"
 				exit 7
 			fi
+			echo "--------------------------------------------"
+			echo "Creating OLD temporary directory is complete"
+			echo "--------------------------------------------"
 
 			echo "-------------------------------------------------------"
 			echo "Moving existing data files into OLD temporary directory"
 			echo "-------------------------------------------------------"
 			mv -v "${PGDATA}"/* "${OLD}"
+			echo "-------------------------------------------------------------------"
+			echo "Moving existing data files into OLD temporary directory is complete"
+			echo "-------------------------------------------------------------------"
 
 			echo "---------------------------------------"
 			echo "Creating NEW temporary directory ${NEW}"
@@ -428,184 +458,91 @@ _main() {
 				mv -v "${OLD}"/* "${PGDATA}"
 				exit 8
 			fi
+			echo "--------------------------------------------"
+			echo "Creating NEW temporary directory is complete"
+			echo "--------------------------------------------"
+
+			echo "-----------------------------------------------------"
+			echo "Changing permissions of temporary directories to 0700"
+			echo "-----------------------------------------------------"
 			chmod 0700 "${OLD}" "${NEW}"
+			echo "---------------------------------------------------------"
+			echo "Changing permissions of temporary directories is complete"
+			echo "---------------------------------------------------------"
 
 			# Return the error handling back to automatically aborting on non-0 exit status
 			set -e
 
-			# Perform the data directory upgrade
-			local RECOGNISED=0
-			if [ "${PGVER}" = "9.5" ]; then
-				RECOGNISED=1
-				echo "------------------------------------------------------------------------"
-				echo "PostgreSQL 9.5 database files found, upgrading to PostgreSQL ${PGTARGET}"
-				echo "------------------------------------------------------------------------"
-
-				# Initialise the new data directory using the same collation as the old one
-				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg9.5/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				echo "---------------------------------------------------------------------------------------"
-				echo "Old database using collation: '${COLL}'.  Initialising new database with that collation"
-				echo "---------------------------------------------------------------------------------------"
-				initdb_locale "${COLL}"
-				cd "${PGDATA}"
-				echo "---------------------------------------"
-				echo "Running pg_upgrade command, from $(pwd)"
-				echo "---------------------------------------"
-				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.5/bin -B /usr/local/bin
-				echo "---------------------------"
-				echo "pg_upgrade command finished"
-				echo "---------------------------"
-			elif [ "${PGVER}" = "9.6" ]; then
-				RECOGNISED=1
-				echo "------------------------------------------------------------------------"
-				echo "PostgreSQL 9.6 database files found, upgrading to PostgreSQL ${PGTARGET}"
-				echo "------------------------------------------------------------------------"
-
-				# Initialise the new data directory using the same collation as the old one
-				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg9.6/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				echo "---------------------------------------------------------------------------------------"
-				echo "Old database using collation: '${COLL}'.  Initialising new database with that collation"
-				echo "---------------------------------------------------------------------------------------"
-				initdb_locale "${COLL}"
-				cd "${PGDATA}"
-				echo "---------------------------------------"
-				echo "Running pg_upgrade command, from $(pwd)"
-				echo "---------------------------------------"
-				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg9.6/bin -B /usr/local/bin
-				echo "---------------------------"
-				echo "pg_upgrade command finished"
-				echo "---------------------------"
-			elif [ "${PGVER}" = "10" ]; then
-				RECOGNISED=1
-				echo "-----------------------------------------------------------------------"
-				echo "PostgreSQL 10 database files found, upgrading to PostgreSQL ${PGTARGET}"
-				echo "-----------------------------------------------------------------------"
-
-				# Initialise the new data directory using the same collation as the old one
-				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg10/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				echo "---------------------------------------------------------------------------------------"
-				echo "Old database using collation: '${COLL}'.  Initialising new database with that collation"
-				echo "---------------------------------------------------------------------------------------"
-				initdb_locale "${COLL}"
-				cd "${PGDATA}"
-				echo "---------------------------------------"
-				echo "Running pg_upgrade command, from $(pwd)"
-				echo "---------------------------------------"
-				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg10/bin -B /usr/local/bin
-				echo "---------------------------"
-				echo "pg_upgrade command finished"
-				echo "---------------------------"
-			elif [ "${PGVER}" = "11" ]; then
-				RECOGNISED=1
-				echo "-----------------------------------------------------------------------"
-				echo "PostgreSQL 11 database files found, upgrading to PostgreSQL ${PGTARGET}"
-				echo "-----------------------------------------------------------------------"
-
-				# Initialise the new data directory using the same collation as the old one
-				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg11/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				echo "---------------------------------------------------------------------------------------"
-				echo "Old database using collation: '${COLL}'.  Initialising new database with that collation"
-				echo "---------------------------------------------------------------------------------------"
-				initdb_locale "${COLL}"
-				cd "${PGDATA}"
-				echo "---------------------------------------"
-				echo "Running pg_upgrade command, from $(pwd)"
-				echo "---------------------------------------"
-				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg11/bin -B /usr/local/bin
-				echo "---------------------------"
-				echo "pg_upgrade command finished"
-				echo "---------------------------"
-			elif [ "${PGVER}" = "12" ]; then
-				RECOGNISED=1
-				echo "-----------------------------------------------------------------------"
-				echo "PostgreSQL 12 database files found, upgrading to PostgreSQL ${PGTARGET}"
-				echo "-----------------------------------------------------------------------"
-
-				# Initialise the new data directory using the same collation as the old one
-				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg12/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				echo "---------------------------------------------------------------------------------------"
-				echo "Old database using collation: '${COLL}'.  Initialising new database with that collation"
-				echo "---------------------------------------------------------------------------------------"
-				initdb_locale "${COLL}"
-				cd "${PGDATA}"
-				echo "---------------------------------------"
-				echo "Running pg_upgrade command, from $(pwd)"
-				echo "---------------------------------------"
-				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg12/bin -B /usr/local/bin
-				echo "---------------------------"
-				echo "pg_upgrade command finished"
-				echo "---------------------------"
+			# If no initdb arguments were passed to us from the environment, then work out something valid ourselves
+			if [ "x${POSTGRES_INITDB_ARGS}" != "x" ]; then
+				echo "------------------------------------------------------------------------------"
+				echo "Using initdb arguments passed in from the environment: ${POSTGRES_INITDB_ARGS}"
+				echo "------------------------------------------------------------------------------"
+			else
+				echo "------------------------------------"
+				echo "Determining our own initdb arguments"
+				echo "------------------------------------"
+				local COLLATE=unset
+				local CTYPE=unset
+				local ENCODING=unset
+				COLLATE=$(echo 'SHOW LC_COLLATE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
+				CTYPE=$(echo 'SHOW LC_CTYPE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" | grep 'lc_ctype = "' | cut -d '"' -f 2)
+				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" | grep 'server_encoding = "' | cut -d '"' -f 2)
+				POSTGRES_INITDB_ARGS="--locale=${COLLATE} --lc-collate=${COLLATE} --lc-ctype=${CTYPE} --encoding=${ENCODING}"
+				echo "---------------------------------------------------------------"
+				echo "The initdb arguments we determined are: ${POSTGRES_INITDB_ARGS}"
+				echo "---------------------------------------------------------------"
 			fi
-			if [ "${PGTARGET}" -gt 13 ] && [ "${PGVER}" = "13" ]; then
-				RECOGNISED=1
-				echo "-----------------------------------------------------------------------"
-				echo "PostgreSQL 13 database files found, upgrading to PostgreSQL ${PGTARGET}"
-				echo "-----------------------------------------------------------------------"
 
-				# Initialise the new data directory using the same collation as the old one
-				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg13/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				echo "---------------------------------------------------------------------------------------"
-				echo "Old database using collation: '${COLL}'.  Initialising new database with that collation"
-				echo "---------------------------------------------------------------------------------------"
-				initdb_locale "${COLL}"
-				cd "${PGDATA}"
-				echo "---------------------------------------"
-				echo "Running pg_upgrade command, from $(pwd)"
-				echo "---------------------------------------"
-				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg13/bin -B /usr/local/bin
-				echo "---------------------------"
-				echo "pg_upgrade command finished"
-				echo "---------------------------"
-			fi
-			if [ "${PGTARGET}" -gt 14 ] && [ "${PGVER}" = "14" ]; then
-				RECOGNISED=1
-				echo "-----------------------------------------------------------------------"
-				echo "PostgreSQL 14 database files found, upgrading to PostgreSQL ${PGTARGET}"
-				echo "-----------------------------------------------------------------------"
+			# Initialise the new PostgreSQL database directory
+			echo "--------------------------------------------------------------------------------------------------------------------"
+			echo "Old database using collation settings: '${POSTGRES_INITDB_ARGS}'.  Initialising new database with those settings too"
+			echo "--------------------------------------------------------------------------------------------------------------------"
+			initdb_locale "${POSTGRES_INITDB_ARGS}"
+			echo "------------------------------------"
+			echo "New database initialisation complete"
+			echo "------------------------------------"
 
-				# Initialise the new data directory using the same collation as the old one
-				COLL=$(echo 'SHOW LC_COLLATE' | /usr/local-pg14/bin/postgres --single -D "${OLD}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				echo "---------------------------------------------------------------------------------------"
-				echo "Old database using collation: '${COLL}'.  Initialising new database with that collation"
-				echo "---------------------------------------------------------------------------------------"
-				initdb_locale "${COLL}"
-				cd "${PGDATA}"
-				echo "---------------------------------------"
-				echo "Running pg_upgrade command, from $(pwd)"
-				echo "---------------------------------------"
-				/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b /usr/local-pg14/bin -B /usr/local/bin
-				echo "---------------------------"
-				echo "pg_upgrade command finished"
-				echo "---------------------------"
-			fi
-			if [ "${RECOGNISED}" -ne 1 ]; then
-				echo "***********************************************************************"
-				echo "Unknown version of PostgreSQL database files found, aborting completely"
-				echo "***********************************************************************"
-				exit 9
-			fi
+			# Change into the PG database directory, to avoid a pg_upgrade error about write permissions
+			cd "${PGDATA}"
+			echo "---------------------------------------"
+			echo "Running pg_upgrade command, from $(pwd)"
+			echo "---------------------------------------"
+			/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B /usr/local/bin
+			echo "--------------------------------------"
+			echo "Running pg_upgrade command is complete"
+			echo "--------------------------------------"
 
 			# Move the new database files into place
-			echo "-------------------------------------------------------------"
-			echo "Moving the new updated database files to the active directory"
-			echo "-------------------------------------------------------------"
+			echo "-----------------------------------------------------"
+			echo "Moving the new database files to the active directory"
+			echo "-----------------------------------------------------"
 			mv -v "${NEW}"/* "${PGDATA}"
+			echo "-----------------------------------------"
+			echo "Moving the new database files is complete"
+			echo "-----------------------------------------"
 
 			# Re-use the pg_hba.conf and pg_ident.conf from the old data directory
 			echo "--------------------------------------------------------------"
 			echo "Copying the old pg_hba and pg_ident configuration files across"
 			echo "--------------------------------------------------------------"
 			cp -f "${OLD}/pg_hba.conf" "${OLD}/pg_ident.conf" "${PGDATA}"
+			echo "-------------------------------------------------------------------"
+			echo "Copying the old pg_hba and pg_ident configuration files is complete"
+			echo "-------------------------------------------------------------------"
 
 			# Remove the left over database files
 			echo "---------------------------------"
 			echo "Removing left over database files"
 			echo "---------------------------------"
 			rm -rf "${OLD}" "${NEW}" ~/delete_old_cluster.sh
+			echo "---------------------------------------------"
+			echo "Removing left over database files is complete"
+			echo "---------------------------------------------"
 
-			echo "************************************************************"
-			echo "Automatic upgrade process finished with no errors (reported)"
-			echo "************************************************************"
+			echo "**********************************************************"
+			echo "Automatic upgrade process finished with no errors reported"
+			echo "**********************************************************"
 		fi
 
 		### The main pgautoupgrade scripting ends here ###
