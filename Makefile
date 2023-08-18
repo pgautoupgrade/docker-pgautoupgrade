@@ -1,6 +1,6 @@
-.PHONY: all dev 13dev 14dev 15dev latest attach before clean down server test up
+.PHONY: all dev 13dev 14dev 15dev prod attach before clean down server test up pushdev pushprod
 
-all: 13dev 14dev 15dev latest
+all: 13dev 14dev 15dev prod
 
 dev: 15dev
 
@@ -13,7 +13,7 @@ dev: 15dev
 15dev:
 	docker build -t pgautoupgrade/pgautoupgrade:dev .
 
-latest:
+prod:
 	docker build -t pgautoupgrade/pgautoupgrade:15-alpine3.8 -t pgautoupgrade/pgautoupgrade:latest .
 
 attach:
@@ -38,3 +38,12 @@ test:
 
 up:
 	if [ ! -d "test/postgres-data" ]; then mkdir test/postgres-data; fi && docker run --name pgauto -it --rm -e POSTGRES_PASSWORD=password --mount type=bind,source=$(abspath $(CURDIR))/test/postgres-data,target=/var/lib/postgresql/data pgautoupgrade/pgautoupgrade:dev
+
+pushdev:
+	docker push pgautoupgrade/pgautoupgrade:13-dev && \
+	docker push pgautoupgrade/pgautoupgrade:14-dev && \
+	docker push pgautoupgrade/pgautoupgrade:dev
+
+pushprod:
+	docker push pgautoupgrade/pgautoupgrade:15-alpine3.8 && \
+	docker push pgautoupgrade/pgautoupgrade:latest
