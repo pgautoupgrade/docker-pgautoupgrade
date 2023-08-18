@@ -371,9 +371,9 @@ _main() {
 			PGVER=$(cat "${PGDATA}/PG_VERSION")
 		fi
 
-		# If the version of PostgreSQL isn't 15, then upgrade the data files
+		# If the version of PostgreSQL data files doesn't match our desired version, then upgrade them
 		if [ "${PGVER}" != "${PGTARGET}" ]; then
-			# The database files don't match the running version, so ensure they're a version we can upgrade
+			# Ensure the database files are a version we can upgrade
 			local RECOGNISED=0
 			local OLDPATH=unset
 			if [ "${PGVER}" = "9.5" ] || [ "${PGVER}" = "9.6" ] || [ "${PGVER}" = "10" ] || [ "${PGVER}" = "11" ] || [ "${PGVER}" = "12" ]; then
@@ -503,8 +503,10 @@ _main() {
 			echo "New database initialisation complete"
 			echo "------------------------------------"
 
-			# Change into the PG database directory, to avoid a pg_upgrade error about write permissions
+			# Change into the PostgreSQL database directory, to avoid a pg_upgrade error about write permissions
 			cd "${PGDATA}"
+
+			# Run the pg_upgrade command itself
 			echo "---------------------------------------"
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
