@@ -21,8 +21,10 @@ test_run() {
     docker-compose -f "docker-compose-pg${VERSION}.yml" run --rm server create_db
 
     # Start Redash normally, using an "autoupdate" version of PostgreSQL
-    if [ "${TARGET}" = "15" ]; then
+    if [ "${TARGET}" = "16" ]; then
       docker-compose -f docker-compose-pgauto.yml up -d
+    elif [ "${TARGET}" = "15" ]; then
+      TARGET_TAG=15-dev docker-compose -f docker-compose-pgauto.yml up -d
     elif [ "${TARGET}" = "14" ]; then
       TARGET_TAG=14-dev docker-compose -f docker-compose-pgauto.yml up -d
     elif [ "${TARGET}" = "13" ]; then
@@ -86,6 +88,16 @@ test_run 12 15
 test_run 13 15
 test_run 14 15
 
+# Testing upgrading from each major PG version directly to PG 16
+test_run 9.5 16
+test_run 9.6 16
+test_run 10 16
+test_run 11 16
+test_run 12 16
+test_run 13 16
+test_run 14 16
+test_run 15 16
+
 if [ "${FAILURE}" -ne 0 ]; then
 	echo
 	echo "FAILURE: Automatic upgrade of PostgreSQL failed in one of the tests.  Please investigate."
@@ -93,6 +105,6 @@ if [ "${FAILURE}" -ne 0 ]; then
 	exit 1
 else
 	echo
-	echo "SUCCESS: Automatic upgrade testing of PostgreSQL to PG 13, 14, and 15 passed without issue."
+	echo "SUCCESS: Automatic upgrade testing of PostgreSQL to PG 13, 14, 15, and 16 passed without issue."
 	echo
 fi
