@@ -14,9 +14,10 @@ dev: 16dev
 	docker build --build-arg PGTARGET=15 -t pgautoupgrade/pgautoupgrade:15-dev .
 
 16dev:
-	docker build -t pgautoupgrade/pgautoupgrade:dev .
+	docker build -t pgautoupgrade/pgautoupgrade:16-dev -t pgautoupgrade/pgautoupgrade:dev .
 
 prod:
+	docker build --build-arg PGTARGET=15 -t pgautoupgrade/pgautoupgrade:15-alpine3.8 . && \
 	docker build -t pgautoupgrade/pgautoupgrade:16-alpine3.8 -t pgautoupgrade/pgautoupgrade:latest .
 
 attach:
@@ -27,8 +28,8 @@ before:
 
 clean:
 	docker image rm --force pgautoupgrade/pgautoupgrade:dev pgautoupgrade/pgautoupgrade:13-dev && \
-		pgautoupgrade/pgautoupgrade:14-dev pgautoupgrade/pgautoupgrade:15-alpine3.8 && \
-		pgautoupgrade/pgautoupgrade:16-alpine3.8 pgautoupgrade/pgautoupgrade:latest && \
+		pgautoupgrade/pgautoupgrade:14-dev pgautoupgrade/pgautoupgrade:15-dev pgautoupgrade/pgautoupgrade:16-dev && \
+		pgautoupgrade/pgautoupgrade:15-alpine3.8 pgautoupgrade/pgautoupgrade:16-alpine3.8 pgautoupgrade/pgautoupgrade:latest && \
 	docker image prune -f && \
 	docker volume prune -f
 
@@ -48,6 +49,7 @@ pushdev:
 	docker push pgautoupgrade/pgautoupgrade:13-dev && \
 	docker push pgautoupgrade/pgautoupgrade:14-dev && \
 	docker push pgautoupgrade/pgautoupgrade:15-dev && \
+	docker push pgautoupgrade/pgautoupgrade:16-dev && \
 	docker push pgautoupgrade/pgautoupgrade:dev
 
 pushprod:
