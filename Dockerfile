@@ -1,5 +1,5 @@
 # The version of PostgreSQL this container migrates data to
-ARG PGTARGET=15
+ARG PGTARGET=16
 
 # We use Alpine as a base image to compile older
 # PostgreSQL versions in, then copy the binaries
@@ -24,6 +24,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v9.5.25/postgresql-9.5.25.tar.bz2
     wget https://ftp.postgresql.org/pub/source/v12.16/postgresql-12.16.tar.bz2
 RUN if [ "${PGTARGET}" -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.12/postgresql-13.12.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.9/postgresql-14.9.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 15 ]; then wget https://ftp.postgresql.org/pub/source/v15.4/postgresql-15.4.tar.bz2; fi
 
 # Extract the source code
 RUN tar -xf postgresql-9.5*.tar.bz2 && \
@@ -33,6 +34,7 @@ RUN tar -xf postgresql-9.5*.tar.bz2 && \
     tar -xf postgresql-12*.tar.bz2
 RUN if [ "${PGTARGET}" -gt 13 ]; then tar -xf postgresql-13*.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 14 ]; then tar -xf postgresql-14*.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 15 ]; then tar -xf postgresql-15*.tar.bz2; fi
 
 # Install things needed for development
 # We might want to install "alpine-sdk" instead of "build-base", if build-base
@@ -79,6 +81,11 @@ RUN if [ "${PGTARGET}" -gt 14 ]; then cd postgresql-14.* && \
     make -j12 && \
     make install && \
     rm -rf /usr/local-pg14/include; else mkdir /usr/local-pg14; fi
+RUN if [ "${PGTARGET}" -gt 15 ]; then cd postgresql-15.* && \
+    ./configure --prefix=/usr/local-pg15 --with-openssl=no --without-readline --with-icu --with-lz4 --enable-debug=no CFLAGS="-Os" && \
+    make -j12 && \
+    make install && \
+    rm -rf /usr/local-pg15/include; else mkdir /usr/local-pg15; fi
 
 # Use the PostgreSQL Alpine image as our output image base
 FROM postgres:${PGTARGET}-alpine3.18
@@ -94,10 +101,12 @@ COPY --from=build /usr/local-pg11 /usr/local-pg11
 COPY --from=build /usr/local-pg12 /usr/local-pg12
 COPY --from=build /usr/local-pg13 /usr/local-pg13
 COPY --from=build /usr/local-pg14 /usr/local-pg14
+COPY --from=build /usr/local-pg15 /usr/local-pg15
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
-RUN if [ "${PGTARGET}" -eq 13 ]; then rmdir /usr/local-pg13 /usr/local-pg14; fi
-RUN if [ "${PGTARGET}" -eq 14 ]; then rmdir /usr/local-pg14; fi
+RUN if [ "${PGTARGET}" -eq 13 ]; then rmdir /usr/local-pg13 /usr/local-pg14 /usr/local-pg15; fi
+RUN if [ "${PGTARGET}" -eq 14 ]; then rmdir /usr/local-pg14 /usr/local-pg15; fi
+RUN if [ "${PGTARGET}" -eq 15 ]; then rmdir /usr/local-pg15; fi
 
 # Install locale
 RUN apk update && \
