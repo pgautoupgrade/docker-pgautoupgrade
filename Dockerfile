@@ -20,11 +20,11 @@ WORKDIR ${BUILD_ROOT}
 RUN wget https://ftp.postgresql.org/pub/source/v9.5.25/postgresql-9.5.25.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v9.6.24/postgresql-9.6.24.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v10.23/postgresql-10.23.tar.bz2 && \
-    wget https://ftp.postgresql.org/pub/source/v11.21/postgresql-11.21.tar.bz2 && \
-    wget https://ftp.postgresql.org/pub/source/v12.16/postgresql-12.16.tar.bz2
-RUN if [ "${PGTARGET}" -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.12/postgresql-13.12.tar.bz2; fi
-RUN if [ "${PGTARGET}" -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.9/postgresql-14.9.tar.bz2; fi
-RUN if [ "${PGTARGET}" -gt 15 ]; then wget https://ftp.postgresql.org/pub/source/v15.4/postgresql-15.4.tar.bz2; fi
+    wget https://ftp.postgresql.org/pub/source/v11.22/postgresql-11.22.tar.bz2 && \
+    wget https://ftp.postgresql.org/pub/source/v12.17/postgresql-12.17.tar.bz2
+RUN if [ "${PGTARGET}" -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.13/postgresql-13.13.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.10/postgresql-14.10.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 15 ]; then wget https://ftp.postgresql.org/pub/source/v15.5/postgresql-15.5.tar.bz2; fi
 
 # Extract the source code
 RUN tar -xf postgresql-9.5*.tar.bz2 && \
