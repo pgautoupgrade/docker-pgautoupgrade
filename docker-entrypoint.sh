@@ -279,7 +279,7 @@ docker_temp_server_stop() {
 # Initialise PG data directory in a temp location with a specific locale
 initdb_locale() {
 	echo "Initialising PostgreSQL 15 data directory"
-	/usr/local/bin/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} /var/lib/postgresql/data/new/
+	/usr/local/bin/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} ${PGDATA}/new/
 }
 
 # check arguments for an option that would cause postgres to stop
