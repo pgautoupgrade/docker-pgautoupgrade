@@ -4,7 +4,7 @@ ARG PGTARGET=16
 # We use Alpine as a base image to compile older
 # PostgreSQL versions in, then copy the binaries
 # into the PG 15 Alpine image
-FROM alpine:3.18 AS build
+FROM alpine:3.19 AS build
 
 # We need to define this here, to make the above PGTARGET available after the FROM
 ARG PGTARGET
@@ -21,10 +21,10 @@ RUN wget https://ftp.postgresql.org/pub/source/v9.5.25/postgresql-9.5.25.tar.bz2
     wget https://ftp.postgresql.org/pub/source/v9.6.24/postgresql-9.6.24.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v10.23/postgresql-10.23.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v11.22/postgresql-11.22.tar.bz2 && \
-    wget https://ftp.postgresql.org/pub/source/v12.17/postgresql-12.17.tar.bz2
-RUN if [ "${PGTARGET}" -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.13/postgresql-13.13.tar.bz2; fi
-RUN if [ "${PGTARGET}" -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.10/postgresql-14.10.tar.bz2; fi
-RUN if [ "${PGTARGET}" -gt 15 ]; then wget https://ftp.postgresql.org/pub/source/v15.5/postgresql-15.5.tar.bz2; fi
+    wget https://ftp.postgresql.org/pub/source/v12.18/postgresql-12.18.tar.bz2
+RUN if [ "${PGTARGET}" -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.14/postgresql-13.14.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.11/postgresql-14.11.tar.bz2; fi
+RUN if [ "${PGTARGET}" -gt 15 ]; then wget https://ftp.postgresql.org/pub/source/v15.6/postgresql-15.6.tar.bz2; fi
 
 # Extract the source code
 RUN tar -xf postgresql-9.5*.tar.bz2 && \
@@ -88,7 +88,7 @@ RUN if [ "${PGTARGET}" -gt 15 ]; then cd postgresql-15.* && \
     rm -rf /usr/local-pg15/include; else mkdir /usr/local-pg15; fi
 
 # Use the PostgreSQL Alpine image as our output image base
-FROM postgres:${PGTARGET}-alpine3.18
+FROM postgres:${PGTARGET}-alpine3.19
 
 # We need to define this here, to make the above PGTARGET available after the FROM
 ARG PGTARGET
