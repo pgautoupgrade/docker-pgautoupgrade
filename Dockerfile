@@ -41,50 +41,50 @@ RUN if [ "${PGTARGET}" -gt 15 ]; then tar -xf postgresql-15*.tar.bz2; fi
 # doesn't have everything we need
 RUN apk update && \
     apk upgrade && \
-    apk add --update build-base icu-data-full icu-dev linux-headers lz4-dev musl musl-locales musl-utils tzdata zlib-dev && \
+    apk add --update build-base icu-data-full icu-dev linux-headers lz4-dev musl musl-locales musl-utils tzdata zlib-dev zstd-dev && \
     apk cache clean
 
 # Compile PG releases with fairly minimal options
 # Note that given some time, we could likely remove the pieces of the older PG installs which aren't needed by pg_upgrade
 RUN cd postgresql-9.5.* && \
-    ./configure --prefix=/usr/local-pg9.5 --with-openssl=no --without-readline --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg9.5 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg9.5/include
 RUN cd postgresql-9.6.* && \
-    ./configure --prefix=/usr/local-pg9.6 --with-openssl=no --without-readline --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg9.6 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg9.6/include
 RUN cd postgresql-10.* && \
-    ./configure --prefix=/usr/local-pg10 --with-openssl=no --without-readline --with-icu --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg10 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg10/include
 RUN cd postgresql-11.* && \
-    ./configure --prefix=/usr/local-pg11 --with-openssl=no --without-readline --with-icu --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg11 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg11/include
 RUN cd postgresql-12.* && \
-    ./configure --prefix=/usr/local-pg12 --with-openssl=no --without-readline --with-icu --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg12 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg12/include
 RUN if [ "${PGTARGET}" -gt 13 ]; then cd postgresql-13.* && \
-    ./configure --prefix=/usr/local-pg13 --with-openssl=no --without-readline --with-icu --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg13 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg13/include; else mkdir /usr/local-pg13; fi
 RUN if [ "${PGTARGET}" -gt 14 ]; then cd postgresql-14.* && \
-    ./configure --prefix=/usr/local-pg14 --with-openssl=no --without-readline --with-icu --with-lz4 --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg14 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --with-lz4 --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg14/include; else mkdir /usr/local-pg14; fi
 RUN if [ "${PGTARGET}" -gt 15 ]; then cd postgresql-15.* && \
-    ./configure --prefix=/usr/local-pg15 --with-openssl=no --without-readline --with-icu --with-lz4 --enable-debug=no CFLAGS="-Os" && \
-    make -j12 && \
-    make install && \
+    ./configure --prefix=/usr/local-pg15 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --with-lz4 --with-zstd --enable-debug=no CFLAGS="-Os" && \
+    make -j $(nproc) && \
+    make install-world && \
     rm -rf /usr/local-pg15/include; else mkdir /usr/local-pg15; fi
 
 # Use the PostgreSQL Alpine image as our output image base
