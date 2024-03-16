@@ -37,7 +37,7 @@ before:
 		pgautoupgrade/pgautoupgrade:dev
 
 clean:
-	docker image rm --force pgautoupgrade/pgautoupgrade:dev pgautoupgrade/pgautoupgrade:13-dev \
+	docker image rm --force pgautoupgrade/pgautoupgrade:dev pgautoupgrade/pgautoupgrade:12-dev pgautoupgrade/pgautoupgrade:13-dev \
 		pgautoupgrade/pgautoupgrade:14-dev pgautoupgrade/pgautoupgrade:15-dev pgautoupgrade/pgautoupgrade:16-dev \
 		pgautoupgrade/pgautoupgrade:15-alpine pgautoupgrade/pgautoupgrade:16-alpine \
 		pgautoupgrade/pgautoupgrade:15-alpine3.19 pgautoupgrade/pgautoupgrade:16-alpine3.19 pgautoupgrade/pgautoupgrade:latest && \
