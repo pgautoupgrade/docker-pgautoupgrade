@@ -3,7 +3,7 @@ ARG PGTARGET=16
 
 # We use Alpine as a base image to compile older
 # PostgreSQL versions in, then copy the binaries
-# into the PG 15 Alpine image
+# into the official PG Alpine image
 FROM alpine:3.19 AS build
 
 # We need to define this here, to make the above PGTARGET available after the FROM
