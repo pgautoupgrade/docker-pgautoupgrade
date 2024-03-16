@@ -482,6 +482,11 @@ _main() {
 				echo "Using initdb arguments passed in from the environment: ${POSTGRES_INITDB_ARGS}"
 				echo "------------------------------------------------------------------------------"
 			else
+				echo "-------------------------------------------------"
+				echo "Remove postmaster.pid file from PG data directory"
+				echo "-------------------------------------------------"
+				rm -f "${OLD}"/postmaster.pid
+
 				echo "------------------------------------"
 				echo "Determining our own initdb arguments"
 				echo "------------------------------------"
