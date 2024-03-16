@@ -29,6 +29,8 @@ test_run() {
       TARGET_TAG=14-dev docker-compose -f docker-compose-pgauto.yml up -d
     elif [ "${TARGET}" = "13" ]; then
       TARGET_TAG=13-dev docker-compose -f docker-compose-pgauto.yml up -d
+    elif [ "${TARGET}" = "12" ]; then
+      TARGET_TAG=12-dev docker-compose -f docker-compose-pgauto.yml up -d
     fi
 
     # Verify the PostgreSQL data files are now the target version
@@ -63,6 +65,12 @@ fi
 
 # Change into the test directory
 cd test || exit 1
+
+# Testing upgrading from each major PG version directly to PG 12
+test_run 9.5 12
+test_run 9.6 12
+test_run 10 12
+test_run 11 12
 
 # Testing upgrading from each major PG version directly to PG 13
 test_run 9.5 13
@@ -105,6 +113,6 @@ if [ "${FAILURE}" -ne 0 ]; then
 	exit 1
 else
 	echo
-	echo "SUCCESS: Automatic upgrade testing of PostgreSQL to PG 13, 14, 15, and 16 passed without issue."
+	echo "SUCCESS: Automatic upgrade testing of PostgreSQL to PG 12, 13, 14, 15, and 16 passed without issue."
 	echo
 fi

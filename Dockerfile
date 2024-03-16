@@ -20,8 +20,8 @@ WORKDIR ${BUILD_ROOT}
 RUN wget https://ftp.postgresql.org/pub/source/v9.5.25/postgresql-9.5.25.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v9.6.24/postgresql-9.6.24.tar.bz2 && \
     wget https://ftp.postgresql.org/pub/source/v10.23/postgresql-10.23.tar.bz2 && \
-    wget https://ftp.postgresql.org/pub/source/v11.22/postgresql-11.22.tar.bz2 && \
-    wget https://ftp.postgresql.org/pub/source/v12.18/postgresql-12.18.tar.bz2
+    wget https://ftp.postgresql.org/pub/source/v11.22/postgresql-11.22.tar.bz2
+RUN if [ "${PGTARGET}" -gt 12 ]; then wget https://ftp.postgresql.org/pub/source/v12.18/postgresql-12.18.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 13 ]; then wget https://ftp.postgresql.org/pub/source/v13.14/postgresql-13.14.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 14 ]; then wget https://ftp.postgresql.org/pub/source/v14.11/postgresql-14.11.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 15 ]; then wget https://ftp.postgresql.org/pub/source/v15.6/postgresql-15.6.tar.bz2; fi
@@ -30,8 +30,8 @@ RUN if [ "${PGTARGET}" -gt 15 ]; then wget https://ftp.postgresql.org/pub/source
 RUN tar -xf postgresql-9.5*.tar.bz2 && \
     tar -xf postgresql-9.6*.tar.bz2 && \
     tar -xf postgresql-10*.tar.bz2 && \
-    tar -xf postgresql-11*.tar.bz2 && \
-    tar -xf postgresql-12*.tar.bz2
+    tar -xf postgresql-11*.tar.bz2
+RUN if [ "${PGTARGET}" -gt 12 ]; then tar -xf postgresql-12*.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 13 ]; then tar -xf postgresql-13*.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 14 ]; then tar -xf postgresql-14*.tar.bz2; fi
 RUN if [ "${PGTARGET}" -gt 15 ]; then tar -xf postgresql-15*.tar.bz2; fi
@@ -66,11 +66,11 @@ RUN cd postgresql-11.* && \
     make -j $(nproc) && \
     make install-world && \
     rm -rf /usr/local-pg11/include
-RUN cd postgresql-12.* && \
+RUN if [ "${PGTARGET}" -gt 12 ]; then cd postgresql-12.* && \
     ./configure --prefix=/usr/local-pg12 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --enable-debug=no CFLAGS="-Os" && \
     make -j $(nproc) && \
     make install-world && \
-    rm -rf /usr/local-pg12/include
+    rm -rf /usr/local-pg12/include; else mkdir /usr/local-pg12; fi
 RUN if [ "${PGTARGET}" -gt 13 ]; then cd postgresql-13.* && \
     ./configure --prefix=/usr/local-pg13 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --with-icu --enable-debug=no CFLAGS="-Os" && \
     make -j $(nproc) && \
@@ -104,6 +104,7 @@ COPY --from=build /usr/local-pg14 /usr/local-pg14
 COPY --from=build /usr/local-pg15 /usr/local-pg15
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
+RUN if [ "${PGTARGET}" -eq 12 ]; then rmdir /usr/local-pg12 /usr/local-pg13 /usr/local-pg14 /usr/local-pg15; fi
 RUN if [ "${PGTARGET}" -eq 13 ]; then rmdir /usr/local-pg13 /usr/local-pg14 /usr/local-pg15; fi
 RUN if [ "${PGTARGET}" -eq 14 ]; then rmdir /usr/local-pg14 /usr/local-pg15; fi
 RUN if [ "${PGTARGET}" -eq 15 ]; then rmdir /usr/local-pg15; fi

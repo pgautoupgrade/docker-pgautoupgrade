@@ -1,8 +1,11 @@
 .PHONY: all dev 13dev 14dev 15dev prod attach before clean down server test up pushdev pushprod
 
-all: 13dev 14dev 15dev 16dev prod
+all: 12dev 13dev 14dev 15dev 16dev prod
 
 dev: 16dev
+
+12dev:
+	docker build --build-arg PGTARGET=12 -t pgautoupgrade/pgautoupgrade:12-dev .
 
 13dev:
 	docker build --build-arg PGTARGET=13 -t pgautoupgrade/pgautoupgrade:13-dev .
@@ -66,6 +69,7 @@ up:
 		pgautoupgrade/pgautoupgrade:dev
 
 pushdev:
+	docker push pgautoupgrade/pgautoupgrade:12-dev && \
 	docker push pgautoupgrade/pgautoupgrade:13-dev && \
 	docker push pgautoupgrade/pgautoupgrade:14-dev && \
 	docker push pgautoupgrade/pgautoupgrade:15-dev && \
