@@ -566,7 +566,13 @@ _main() {
 			sleep 5
 		done
 	else
-		exec "$@"
+		if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
+			echo "*****************************************************************************************************"
+			echo "'One shot' automatic upgrade was requested, so exiting now rather than starting the PostgreSQL server"
+			echo "*****************************************************************************************************"
+		else
+			exec "$@"
+		fi
 	fi
 }
 
