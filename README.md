@@ -47,10 +47,10 @@ To do that, add an environment variable called `PGAUTO_ONESHOT`
 
 ```
 $ docker run --name pgauto -it \
-		--mount type=bind,source=/path/to/your/database/directory,target=/var/lib/postgresql/data \
-		-e POSTGRES_PASSWORD=password \
-		-e PGAUTO_ONESHOT=yes \
-		<NAME_OF_THE_PGAUTOUPGRADE_IMAGE>
+	--mount type=bind,source=/path/to/your/database/directory,target=/var/lib/postgresql/data \
+	-e POSTGRES_PASSWORD=password \
+	-e PGAUTO_ONESHOT=yes \
+	<NAME_OF_THE_PGAUTOUPGRADE_IMAGE>
 ```
 
 # For Developers
