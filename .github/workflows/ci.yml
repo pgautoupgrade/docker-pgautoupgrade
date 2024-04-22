@@ -1,0 +1,122 @@
+name: Build and push
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  base-images:
+    # we cannot offer this caching optimizations to forks as it would require access to our Dockerhub
+    if: github.repository == 'pgautoupgrade/docker-pgautoupgrade'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pg_version:
+          - "9.5"
+          - "9.6"
+          - "10"
+          - "11"
+          - "12"
+          - "13"
+          - "14"
+          - "15"
+          - "16"
+
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            "PGTARGET=16"
+          target: "build-${{ matrix.pg_version }}"
+          tags: "pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}"
+          cache-to: type=inline
+          cache-from: type=registry,ref=pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}
+
+  target-images:
+    runs-on: ubuntu-latest
+    needs: base-images
+    # otherwise, on forks it would skip the build entirely (because the base step does not run)
+    if: always()
+    env:
+      # but they can still use our public caches, but they might be outdated and it still triggers a full rebuild
+      TARGET_TAG: ${{ github.ref == 'refs/heads/main' && 'alpine3.19' || 'dev-alpine3.19' }}
+      CACHE_FROM: |
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.5
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.6
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-10
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-11
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-12
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-13
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-14
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-15
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-16
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19
+      # we cannot access TARGET_TAG from env
+      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
+
+    strategy:
+      matrix:
+        pg_target:
+          - "12"
+          - "13"
+          - "14"
+          - "15"
+          - "16"
+
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          load: true
+          tags: "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19"
+          build-args: |
+            "PGTARGET=${{ matrix.pg_target }}"
+          cache-to: type=inline
+          cache-from: "${{ env.CACHE_FROM }}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test image
+        run: |
+          make test
+        env:
+          PGTARGET: ${{ matrix.pg_target }}
+
+      - name: Push image
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64,linux/arm64
+          tags: "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ env.TARGET_TAG }}"
+          push: true
+          cache-to: type=inline
+          cache-from: "${{ env.CACHE_FROM }}"

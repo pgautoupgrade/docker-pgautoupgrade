@@ -35,7 +35,7 @@ If you instead want to run a specific version of PostgreSQL
 then pick a matching tag on our Docker Hub.  For example, to
 use PostgreSQL 15 you can use:
 
-    pgautoupgrade/pgautoupgrade:15-alpine3.8
+    pgautoupgrade/pgautoupgrade:15-alpine3.19
 
 ### "One shot" mode
 
