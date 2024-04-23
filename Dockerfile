@@ -66,7 +66,7 @@ RUN cd postgresql-11.* && \
 
 ### PostgreSQL 12
 FROM base-build as build-12
-RUN wget https://ftp.postgresql.org/pub/source/v12.17/postgresql-12.17.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v12.18/postgresql-12.18.tar.bz2 && \
   tar -xf postgresql-12*.tar.bz2
 
 RUN cd postgresql-12.* && \
@@ -78,7 +78,7 @@ RUN cd postgresql-12.* && \
 ### PostgreSQL 13
 FROM base-build as build-13
 
-RUN wget https://ftp.postgresql.org/pub/source/v13.13/postgresql-13.13.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v13.14/postgresql-13.14.tar.bz2 && \
   tar -xf postgresql-13*.tar.bz2
 
 RUN cd postgresql-13.* && \
@@ -90,7 +90,7 @@ RUN cd postgresql-13.* && \
 ### PostgreSQL 14
 FROM base-build as build-14
 
-RUN wget https://ftp.postgresql.org/pub/source/v14.10/postgresql-14.10.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v14.11/postgresql-14.11.tar.bz2 && \
   tar -xf postgresql-14*.tar.bz2
 
 RUN cd postgresql-14.* && \
@@ -102,7 +102,7 @@ RUN cd postgresql-14.* && \
 ### PostgreSQL 15
 FROM base-build as build-15
 
-RUN wget https://ftp.postgresql.org/pub/source/v15.5/postgresql-15.5.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v15.6/postgresql-15.6.tar.bz2 && \
   tar -xf postgresql-15*.tar.bz2
 
 RUN cd postgresql-15.* && \
