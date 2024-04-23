@@ -8,8 +8,8 @@ on:
 
 jobs:
   base-images:
-    # we cannot offer this caching optimizations to forks as it would require access to our Dockerhub
-    if: github.repository == 'pgautoupgrade/docker-pgautoupgrade'
+    # for security reason, we only build these images in our repository and on the main branch
+    if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -52,10 +52,11 @@ jobs:
   target-images:
     runs-on: ubuntu-latest
     needs: base-images
-    # otherwise, on forks it would skip the build entirely (because the base step does not run)
+    # otherwise, it would skip the build entirely (because the base step does not run)
     if: always()
     env:
-      # but they can still use our public caches, but they might be outdated and it still triggers a full rebuild
+      # but still use our public caches in any case
+      # they might be outdated, in which case a full rebuild will be triggered
       TARGET_TAG: ${{ github.ref == 'refs/heads/main' && 'alpine3.19' || 'dev-alpine3.19' }}
       CACHE_FROM: |
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.5
