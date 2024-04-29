@@ -27,7 +27,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v9.5.25/postgresql-9.5.25.tar.bz2
 RUN cd postgresql-9.5.* && \
   ./configure --prefix=/usr/local-pg9.5 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg9.5/include
 
 ### PostgreSQL 9.6
@@ -39,7 +39,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v9.6.24/postgresql-9.6.24.tar.bz2
 RUN cd postgresql-9.6.* && \
   ./configure --prefix=/usr/local-pg9.6 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg9.6/include
 
 ### PostgreSQL 10
@@ -50,7 +50,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v10.23/postgresql-10.23.tar.bz2 &
 RUN cd postgresql-10.* && \
   ./configure --prefix=/usr/local-pg10 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg10/include
 
 ### PostgreSQL 11
@@ -61,7 +61,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v11.22/postgresql-11.22.tar.bz2 &
 RUN cd postgresql-11.* && \
   ./configure --prefix=/usr/local-pg11 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg11/include
 
 ### PostgreSQL 12
@@ -72,7 +72,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v12.18/postgresql-12.18.tar.bz2 &
 RUN cd postgresql-12.* && \
   ./configure --prefix=/usr/local-pg12 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg12/include
 
 ### PostgreSQL 13
@@ -84,7 +84,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v13.14/postgresql-13.14.tar.bz2 &
 RUN cd postgresql-13.* && \
   ./configure --prefix=/usr/local-pg13 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg13/include
 
 ### PostgreSQL 14
@@ -96,7 +96,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v14.11/postgresql-14.11.tar.bz2 &
 RUN cd postgresql-14.* && \
   ./configure --prefix=/usr/local-pg14 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg14/include
 
 ### PostgreSQL 15
@@ -108,7 +108,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v15.6/postgresql-15.6.tar.bz2 && 
 RUN cd postgresql-15.* && \
   ./configure --prefix=/usr/local-pg15 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg15/include
 
 ### PostgreSQL 16
@@ -120,7 +120,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v16.2/postgresql-16.2.tar.gz && \
 RUN cd postgresql-16.* && \
   ./configure --prefix=/usr/local-pg16 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
-  make install && \
+  make install-world && \
   rm -rf /usr/local-pg16/include
 
 # Use the PostgreSQL Alpine image as our output image base
