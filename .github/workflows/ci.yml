@@ -128,3 +128,14 @@ jobs:
           push: true
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
+
+      - name: Push latest image
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == '16'
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            "pgautoupgrade/pgautoupgrade:latest"
+          push: true
+          cache-to: type=inline
+          cache-from: "${{ env.CACHE_FROM }}"
