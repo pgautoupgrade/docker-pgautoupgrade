@@ -57,7 +57,7 @@ jobs:
     env:
       # but still use our public caches in any case
       # they might be outdated, in which case a full rebuild will be triggered
-      TARGET_TAG: ${{ github.ref == 'refs/heads/main' && 'alpine3.19' || 'dev-alpine3.19' }}
+      TARGET_TAG: ${{ github.ref == 'refs/heads/main' && 'alpine' || 'dev-alpine' }}
       CACHE_FROM: |
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.5
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.6
@@ -68,6 +68,7 @@ jobs:
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-14
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-15
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-16
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine
         type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19
       # we cannot access TARGET_TAG from env
       # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
@@ -99,7 +100,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           load: true
-          tags: "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19"
+          tags: |
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19"
           build-args: |
             "PGTARGET=${{ matrix.pg_target }}"
           cache-to: type=inline
@@ -119,7 +122,20 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           platforms: linux/amd64,linux/arm64
-          tags: "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ env.TARGET_TAG }}"
+          tags: |
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19"
+          push: true
+          cache-to: type=inline
+          cache-from: "${{ env.CACHE_FROM }}"
+
+      - name: Push latest image
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == '16'
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            "pgautoupgrade/pgautoupgrade:latest"
           push: true
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"

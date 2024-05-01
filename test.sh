@@ -25,7 +25,7 @@ test_run() {
     docker compose -f "docker-compose-pg${VERSION}.yml" run --rm server create_db
 
     # Start Redash normally, using an "autoupdate" version of PostgreSQL
-    TARGET_TAG="${TARGET}-alpine3.19" docker compose -f docker-compose-pgauto.yml up --wait -d
+    TARGET_TAG="${TARGET}-alpine" docker compose -f docker-compose-pgauto.yml up --wait -d
 
     # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat postgres-data/PG_VERSION)
