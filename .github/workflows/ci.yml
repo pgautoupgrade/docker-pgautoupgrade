@@ -125,6 +125,8 @@ jobs:
           tags: |
             "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine"
             "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19"
+          build-args: |
+            "PGTARGET=${{ matrix.pg_target }}"
           push: true
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
@@ -136,6 +138,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             "pgautoupgrade/pgautoupgrade:latest"
+          build-args: |
+            "PGTARGET=${{ matrix.pg_target }}"
           push: true
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
