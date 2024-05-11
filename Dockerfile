@@ -3,6 +3,17 @@ ARG PGTARGET=16
 ### Things we need in all build containers
 FROM alpine:3.19 as base-build
 
+# The versions of PostgreSQL to use
+ENV PG95=9.5.25
+ENV PG96=9.6.24
+ENV PG10=10.23
+ENV PG11=11.22
+ENV PG12=12.19
+ENV PG13=13.15
+ENV PG14=14.12
+ENV PG15=15.7
+ENV PG16=16.3
+
 # Where we'll do all our compiling and similar
 ENV BUILD_ROOT /buildroot
 
@@ -21,7 +32,7 @@ RUN apk update && \
 ### PostgreSQL 9.5
 FROM base-build as build-9.5
 
-RUN wget https://ftp.postgresql.org/pub/source/v9.5.25/postgresql-9.5.25.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG95}/postgresql-${PG95}.tar.bz2 && \
   tar -xf postgresql-9.5*.tar.bz2
 
 RUN cd postgresql-9.5.* && \
@@ -33,7 +44,7 @@ RUN cd postgresql-9.5.* && \
 ### PostgreSQL 9.6
 FROM base-build as build-9.6
 
-RUN wget https://ftp.postgresql.org/pub/source/v9.6.24/postgresql-9.6.24.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG96}/postgresql-${PG96}.tar.bz2 && \
   tar -xf postgresql-9.6*.tar.bz2
 
 RUN cd postgresql-9.6.* && \
@@ -44,7 +55,7 @@ RUN cd postgresql-9.6.* && \
 
 ### PostgreSQL 10
 FROM base-build as build-10
-RUN wget https://ftp.postgresql.org/pub/source/v10.23/postgresql-10.23.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG10}/postgresql-${PG10}.tar.bz2 && \
   tar -xf postgresql-10*.tar.bz2
 
 RUN cd postgresql-10.* && \
@@ -55,7 +66,7 @@ RUN cd postgresql-10.* && \
 
 ### PostgreSQL 11
 FROM base-build as build-11
-RUN wget https://ftp.postgresql.org/pub/source/v11.22/postgresql-11.22.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG11}/postgresql-${PG11}.tar.bz2 && \
   tar -xf postgresql-11*.tar.bz2
 
 RUN cd postgresql-11.* && \
@@ -66,7 +77,7 @@ RUN cd postgresql-11.* && \
 
 ### PostgreSQL 12
 FROM base-build as build-12
-RUN wget https://ftp.postgresql.org/pub/source/v12.18/postgresql-12.18.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG12}/postgresql-${PG12}.tar.bz2 && \
   tar -xf postgresql-12*.tar.bz2
 
 RUN cd postgresql-12.* && \
@@ -78,7 +89,7 @@ RUN cd postgresql-12.* && \
 ### PostgreSQL 13
 FROM base-build as build-13
 
-RUN wget https://ftp.postgresql.org/pub/source/v13.14/postgresql-13.14.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG13}/postgresql-${PG13}.tar.bz2 && \
   tar -xf postgresql-13*.tar.bz2
 
 RUN cd postgresql-13.* && \
@@ -90,7 +101,7 @@ RUN cd postgresql-13.* && \
 ### PostgreSQL 14
 FROM base-build as build-14
 
-RUN wget https://ftp.postgresql.org/pub/source/v14.11/postgresql-14.11.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG14}/postgresql-${PG14}.tar.bz2 && \
   tar -xf postgresql-14*.tar.bz2
 
 RUN cd postgresql-14.* && \
@@ -102,7 +113,7 @@ RUN cd postgresql-14.* && \
 ### PostgreSQL 15
 FROM base-build as build-15
 
-RUN wget https://ftp.postgresql.org/pub/source/v15.6/postgresql-15.6.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG15}/postgresql-${PG15}.tar.bz2 && \
   tar -xf postgresql-15*.tar.bz2
 
 RUN cd postgresql-15.* && \
@@ -114,7 +125,7 @@ RUN cd postgresql-15.* && \
 ### PostgreSQL 16
 FROM base-build as build-16
 
-RUN wget https://ftp.postgresql.org/pub/source/v16.2/postgresql-16.2.tar.gz && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG16}/postgresql-${PG16}.tar.gz && \
   tar -xf postgresql-16*.tar.gz
 
 RUN cd postgresql-16.* && \
