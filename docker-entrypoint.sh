@@ -518,7 +518,7 @@ _main() {
 			echo "---------------------------------------"
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
-			/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B /usr/local/bin
+			/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B /usr/local/bin --socketdir="/var/run/postgresql"
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"
