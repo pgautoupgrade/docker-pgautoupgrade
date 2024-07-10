@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        operating_system:
+          - alpine
         pg_version:
           - "9.5"
           - "9.6"
@@ -40,14 +42,15 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
+          file: "Dockerfile.${{ matrix.operating_system }}"
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: |
             "PGTARGET=16"
           target: "build-${{ matrix.pg_version }}"
-          tags: "pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}"
+          tags: "pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}-${{ matrix.operating_system }}"
           cache-to: type=inline
-          cache-from: type=registry,ref=pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}
+          cache-from: type=registry,ref=pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}-${{ matrix.operating_system }}
 
   target-images:
     runs-on: ubuntu-latest
@@ -57,24 +60,24 @@ jobs:
     env:
       # but still use our public caches in any case
       # they might be outdated, in which case a full rebuild will be triggered
-      TARGET_TAG: ${{ github.ref == 'refs/heads/main' && 'alpine' || 'dev-alpine' }}
       CACHE_FROM: |
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.5
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.6
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-10
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-11
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-12
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-13
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-14
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-15
-        type=registry,ref=pgautoupgrade/pgautoupgrade:build-16
-        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine
-        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19
-      # we cannot access TARGET_TAG from env
-      # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.5-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.6-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-10-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-11-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-12-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-13-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-14-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-15-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-16-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.version }}
 
     strategy:
       matrix:
+        operating_system:
+          - flavor: "alpine"
+            version: "3.19"
         pg_target:
           - "12"
           - "13"
@@ -99,10 +102,11 @@ jobs:
       - name: Build image
         uses: docker/build-push-action@v5
         with:
+          file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           load: true
           tags: |
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine"
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.version }}"
           build-args: |
             "PGTARGET=${{ matrix.pg_target }}"
           cache-to: type=inline
@@ -116,15 +120,17 @@ jobs:
           make test
         env:
           PGTARGET: ${{ matrix.pg_target }}
+          OS_FLAVOR: ${{ matrix.operating_system.flavor }}
 
       - name: Push image
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
+          file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           platforms: linux/amd64,linux/arm64
           tags: |
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine"
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-alpine3.19"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.version }}"
           build-args: |
             "PGTARGET=${{ matrix.pg_target }}"
           push: true
@@ -132,9 +138,10 @@ jobs:
           cache-from: "${{ env.CACHE_FROM }}"
 
       - name: Push latest image
-        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == '16'
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == '16' && matrix.operating_system.flavor == 'alpine'
         uses: docker/build-push-action@v5
         with:
+          file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           platforms: linux/amd64,linux/arm64
           tags: |
             "pgautoupgrade/pgautoupgrade:latest"
