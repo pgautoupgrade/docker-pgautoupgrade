@@ -279,7 +279,8 @@ docker_temp_server_stop() {
 # Initialise PG data directory in a temp location with a specific locale
 initdb_locale() {
 	echo "Initialising PostgreSQL ${PGTARGET} data directory"
-	/usr/local/bin/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} ${PGDATA}/new/
+	bin_path=$(get_bin_path)
+	${bin_path}/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} ${PGDATA}/new/
 }
 
 # check arguments for an option that would cause postgres to stop
@@ -299,6 +300,14 @@ _pg_want_help() {
 	return 1
 }
 
+get_bin_path() {
+  if [ -f /etc/alpine-release ]; then
+    echo "/usr/local/bin"
+  else
+    echo "/usr/lib/postgresql/${PGTARGET}/bin"
+  fi
+}
+
 _main() {
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
@@ -310,8 +319,13 @@ _main() {
 		# setup data directories and permissions (when run as root)
 		docker_create_db_directories
 		if [ "$(id -u)" = '0' ]; then
-			# then restart script as postgres user
-			exec su-exec postgres "$BASH_SOURCE" "$@"
+			if [ -f /etc/alpine-release ]; then
+				# If running on Alpine, use su-exec
+				exec su-exec postgres "$BASH_SOURCE" "$@"
+			else
+				# Otherwise, use gosu
+				exec gosu postgres "$BASH_SOURCE" "$@"
+			fi
 		fi
 
 		# only run initialization on an empty data directory
@@ -518,7 +532,8 @@ _main() {
 			echo "---------------------------------------"
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
-			/usr/local/bin/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B /usr/local/bin --socketdir="/var/run/postgresql"
+			bin_path=$(get_bin_path)
+			${bin_path}/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B "${bin_path}" --socketdir="/var/run/postgresql"
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"

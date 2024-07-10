@@ -31,6 +31,9 @@ To always use the latest version of PostgreSQL, use the tag
 
     pgautoupgrade/pgautoupgrade:latest
 
+Please note that our `latest` tag is based on Alpine. The one by
+Postgres is based on Debian.
+
 If you instead want to run a specific version of PostgreSQL
 then pick a matching tag on our Docker Hub. For example, to
 use PostgreSQL 15 you can use:
