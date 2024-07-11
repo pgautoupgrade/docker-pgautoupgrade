@@ -14,6 +14,7 @@ test_down() {
 test_run() {
     VERSION=$1
     TARGET=$2
+    FLAVOR=$3
 
     # Delete any existing test PostgreSQL data
     if [ -d postgres-data ]; then
@@ -25,7 +26,7 @@ test_run() {
     docker compose -f "docker-compose-pg${VERSION}.yml" run --rm server create_db
 
     # Start Redash normally, using an "autoupdate" version of PostgreSQL
-    TARGET_TAG="${TARGET}-alpine" docker compose -f docker-compose-pgauto.yml up --wait -d
+    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f docker-compose-pgauto.yml up --wait -d
 
     # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat postgres-data/PG_VERSION)
@@ -64,7 +65,7 @@ cd test || exit 1
 for version in "${PG_VERSIONS[@]}"; do
     # Only test if the version is less than the latest version
     if [[ $(echo "$version < $PGTARGET" | bc) -eq 1 ]]; then
-        test_run "$version" "$PGTARGET"
+        test_run "$version" "$PGTARGET" "$OS_FLAVOR"
     fi
 done
 
