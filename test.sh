@@ -47,6 +47,11 @@ test_run() {
 
     # Shut down containers from previous test runs
     docker compose -f docker-compose-pgauto.yml down
+
+    # If running on CI, delete the Postgres Docker image to avoid space problems
+    if [ -n "$CI" ]; then
+        docker rmi -f $(docker images postgres -q)
+    fi
 }
 
 # Shut down containers from previous test runs
