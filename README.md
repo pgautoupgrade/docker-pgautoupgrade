@@ -31,14 +31,29 @@ To always use the latest version of PostgreSQL, use the tag
 
     pgautoupgrade/pgautoupgrade:latest
 
-Please note that our `latest` tag is based on Alpine. The one by
-Postgres is based on Debian.
+Please note that our `latest` tag is based on Alpine Linux,
+whereas the `latest` tag used by the official Docker
+Postgres container is based on Debian.
 
 If you instead want to run a specific version of PostgreSQL
 then pick a matching tag on our Docker Hub. For example, to
 use PostgreSQL 15 you can use:
 
     pgautoupgrade/pgautoupgrade:15-alpine
+
+### Debian vs Alpine based images
+
+The default official Docker PostgreSQL image is Debian Linux
+based, and upgrading from that to one of our Alpine Linux
+based images doesn't always work out well.
+
+To solve that problem, we have Debian based images
+(`15-bookworm` and `16-bookworm`) available now as well.
+
+To use either of those, choose the version of PostgreSQL you'd
+like to upgrade to, then change your docker image to match:
+
+    pgautoupgrade/pgautoupgrade:15-bookworm
 
 ### "One shot" mode
 
