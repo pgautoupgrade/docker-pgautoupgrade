@@ -1,7 +1,7 @@
 ARG PGTARGET=16
 
 ### Things we need in all build containers
-FROM alpine:3.19 as base-build
+FROM alpine:3.20 as base-build
 
 # The versions of PostgreSQL to use
 ENV PG95=9.5.25
@@ -135,7 +135,7 @@ RUN cd postgresql-16.* && \
   rm -rf /usr/local-pg16/include
 
 # Use the PostgreSQL Alpine image as our output image base
-FROM postgres:${PGTARGET}-alpine3.19
+FROM postgres:${PGTARGET}-alpine3.20
 
 # We need to define this here, to make the above PGTARGET available after the FROM
 ARG PGTARGET
