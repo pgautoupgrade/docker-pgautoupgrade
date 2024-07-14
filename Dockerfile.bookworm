@@ -22,8 +22,6 @@ RUN mkdir ${BUILD_ROOT}
 WORKDIR ${BUILD_ROOT}
 
 # Install things needed for development
-# We might want to install "alpine-sdk" instead of "build-base", if build-base
-# doesn't have everything we need
 RUN apt update && \
   apt upgrade && \
   apt install -y build-essential libicu-dev liblz4-dev locales tzdata zlib1g-dev libzstd-dev wget pkg-config && \
@@ -134,7 +132,7 @@ RUN cd postgresql-16.* && \
   make install-world && \
   rm -rf /usr/local-pg16/include
 
-# Use the PostgreSQL Alpine image as our output image base
+# Use the PostgreSQL Bookworm image as our output image base
 FROM postgres:${PGTARGET}-bookworm
 
 # We need to define this here, to make the above PGTARGET available after the FROM
