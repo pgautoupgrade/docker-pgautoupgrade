@@ -20,8 +20,8 @@ dev: 16dev
 	docker build -t pgautoupgrade/pgautoupgrade:16-dev -t pgautoupgrade/pgautoupgrade:dev .
 
 prod:
-	docker build --build-arg PGTARGET=15 -t pgautoupgrade/pgautoupgrade:15-alpine3.19 -t pgautoupgrade/pgautoupgrade:15-alpine . && \
-	docker build -t pgautoupgrade/pgautoupgrade:16-alpine3.19 -t pgautoupgrade/pgautoupgrade:16-alpine -t pgautoupgrade/pgautoupgrade:latest .
+	docker build --build-arg PGTARGET=15 -t pgautoupgrade/pgautoupgrade:15-alpine3.20 -t pgautoupgrade/pgautoupgrade:15-alpine . && \
+	docker build -t pgautoupgrade/pgautoupgrade:16-alpine3.20 -t pgautoupgrade/pgautoupgrade:16-alpine -t pgautoupgrade/pgautoupgrade:latest .
 
 attach:
 	docker exec -it pgauto /bin/bash
@@ -40,7 +40,7 @@ clean:
 	docker image rm --force pgautoupgrade/pgautoupgrade:dev pgautoupgrade/pgautoupgrade:12-dev pgautoupgrade/pgautoupgrade:13-dev \
 		pgautoupgrade/pgautoupgrade:14-dev pgautoupgrade/pgautoupgrade:15-dev pgautoupgrade/pgautoupgrade:16-dev \
 		pgautoupgrade/pgautoupgrade:15-alpine pgautoupgrade/pgautoupgrade:16-alpine \
-		pgautoupgrade/pgautoupgrade:15-alpine3.19 pgautoupgrade/pgautoupgrade:16-alpine3.19 pgautoupgrade/pgautoupgrade:latest && \
+		pgautoupgrade/pgautoupgrade:15-alpine3.20 pgautoupgrade/pgautoupgrade:16-alpine3.20 pgautoupgrade/pgautoupgrade:latest && \
 	docker image prune -f && \
 	docker volume prune -f
 
@@ -77,8 +77,8 @@ pushdev:
 	docker push pgautoupgrade/pgautoupgrade:dev
 
 pushprod:
-	docker push pgautoupgrade/pgautoupgrade:15-alpine3.19 && \
+	docker push pgautoupgrade/pgautoupgrade:15-alpine3.20 && \
 	docker push pgautoupgrade/pgautoupgrade:15-alpine && \
-	docker push pgautoupgrade/pgautoupgrade:16-alpine3.19 && \
+	docker push pgautoupgrade/pgautoupgrade:16-alpine3.20 && \
 	docker push pgautoupgrade/pgautoupgrade:16-alpine && \
 	docker push pgautoupgrade/pgautoupgrade:latest

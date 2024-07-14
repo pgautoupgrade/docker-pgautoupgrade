@@ -78,7 +78,7 @@ jobs:
       matrix:
         operating_system:
           - flavor: "alpine"
-            version: "3.19"
+            version: "3.20"
           - flavor: "bookworm"
         pg_target:
           - "12"
