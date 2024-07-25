@@ -85,6 +85,14 @@ This will take a few minutes to create the "pgautoupgrade:latest"
 docker image, that you can use in your docker-compose.yml
 files.
 
+## Customising the image
+
+[Our wiki](https://github.com/pgautoupgrade/docker-pgautoupgrade/wiki)
+now includes instructions for customising the image to include
+your own extensions:
+
+&nbsp; &nbsp; https://github.com/pgautoupgrade/docker-pgautoupgrade/wiki/Including-Extensions-(PostGIS)
+
 ## Breakpoints in the image
 
 There are (at present) two predefined er... "breakpoints"
