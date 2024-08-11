@@ -124,6 +124,15 @@ jobs:
           PGTARGET: ${{ matrix.pg_target }}
           OS_FLAVOR: ${{ matrix.operating_system.flavor }}
 
+      # otherwise, we run into space problems
+      # from observation, the buildx builder container already occupies 7 GB out of the 14 GB we have available on a GitHub Actions runner
+      # note that this command will also destroy the pgautoupgrade image we just build
+      # which is intentional, the buildx builder should contain all information still to re-create the same image
+      - name: Cleanup Docker image before pushing
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
+        run: |
+          docker image prune -a
+
       - name: Push image
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
