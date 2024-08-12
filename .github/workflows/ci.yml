@@ -131,7 +131,7 @@ jobs:
       - name: Cleanup Docker image before pushing
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
         run: |
-          docker image prune -a
+          docker image prune -a -f
 
       - name: Push image
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
