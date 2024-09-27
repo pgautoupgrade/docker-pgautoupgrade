@@ -402,6 +402,9 @@ _main() {
 			if [ "${PGTARGET}" -gt 15 ] && [ "${PGVER}" = "15" ]; then
 				RECOGNISED=1
 			fi
+			if [ "${PGTARGET}" -gt 16 ] && [ "${PGVER}" = "16" ]; then
+				RECOGNISED=1
+			fi
 			if [ "${RECOGNISED}" -eq 1 ]; then
 				OLDPATH="/usr/local-pg${PGVER}"
 				echo "*******************************************************************************************"
