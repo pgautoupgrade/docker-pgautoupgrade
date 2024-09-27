@@ -319,13 +319,7 @@ _main() {
 		# setup data directories and permissions (when run as root)
 		docker_create_db_directories
 		if [ "$(id -u)" = '0' ]; then
-			if [ -f /etc/alpine-release ]; then
-				# If running on Alpine, use su-exec
-				exec su-exec postgres "$BASH_SOURCE" "$@"
-			else
-				# Otherwise, use gosu
-				exec gosu postgres "$BASH_SOURCE" "$@"
-			fi
+			exec gosu postgres "$BASH_SOURCE" "$@"
 		fi
 
 		# only run initialization on an empty data directory
