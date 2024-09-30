@@ -319,13 +319,7 @@ _main() {
 		# setup data directories and permissions (when run as root)
 		docker_create_db_directories
 		if [ "$(id -u)" = '0' ]; then
-			if [ -f /etc/alpine-release ]; then
-				# If running on Alpine, use su-exec
-				exec su-exec postgres "$BASH_SOURCE" "$@"
-			else
-				# Otherwise, use gosu
-				exec gosu postgres "$BASH_SOURCE" "$@"
-			fi
+			exec gosu postgres "$BASH_SOURCE" "$@"
 		fi
 
 		# only run initialization on an empty data directory
@@ -400,6 +394,9 @@ _main() {
 				RECOGNISED=1
 			fi
 			if [ "${PGTARGET}" -gt 15 ] && [ "${PGVER}" = "15" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET}" -gt 16 ] && [ "${PGVER}" = "16" ]; then
 				RECOGNISED=1
 			fi
 			if [ "${RECOGNISED}" -eq 1 ]; then
@@ -507,10 +504,20 @@ _main() {
 				local COLLATE=unset
 				local CTYPE=unset
 				local ENCODING=unset
-				COLLATE=$(echo 'SHOW LC_COLLATE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-				CTYPE=$(echo 'SHOW LC_CTYPE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_ctype = "' | cut -d '"' -f 2)
+
 				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'server_encoding = "' | cut -d '"' -f 2)
-				POSTGRES_INITDB_ARGS="--locale=${COLLATE} --lc-collate=${COLLATE} --lc-ctype=${CTYPE} --encoding=${ENCODING}"
+
+				# LC_COLLATE and LC_TYPE have been removed with PG v16
+				# https://www.postgresql.org/docs/release/16.0/
+				if [ "${PGVER}" -lt 16 ]; then
+					COLLATE=$(echo 'SHOW LC_COLLATE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_collate = "' | cut -d '"' -f 2)
+					CTYPE=$(echo 'SHOW LC_CTYPE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_ctype = "' | cut -d '"' -f 2)
+
+					POSTGRES_INITDB_ARGS="--locale=${COLLATE} --lc-collate=${COLLATE} --lc-ctype=${CTYPE} --encoding=${ENCODING}"
+				else
+					POSTGRES_INITDB_ARGS="--encoding=${ENCODING}"
+				fi
+
 				echo "---------------------------------------------------------------"
 				echo "The initdb arguments we determined are: ${POSTGRES_INITDB_ARGS}"
 				echo "---------------------------------------------------------------"
