@@ -37,9 +37,9 @@ Postgres container is based on Debian.
 
 If you instead want to run a specific version of PostgreSQL
 then pick a matching tag on our Docker Hub. For example, to
-use PostgreSQL 15 you can use:
+use PostgreSQL 17 you can use:
 
-    pgautoupgrade/pgautoupgrade:15-alpine
+    pgautoupgrade/pgautoupgrade:17-alpine
 
 ### Debian vs Alpine based images
 
@@ -48,12 +48,12 @@ based, and upgrading from that to one of our Alpine Linux
 based images doesn't always work out well.
 
 To solve that problem, we have Debian based images
-(`15-bookworm` and `16-bookworm`) available now as well.
+(`17-bookworm` and `16-bookworm`) available now as well.
 
 To use either of those, choose the version of PostgreSQL you'd
 like to upgrade to, then change your docker image to match:
 
-    pgautoupgrade/pgautoupgrade:15-bookworm
+    pgautoupgrade/pgautoupgrade:17-bookworm
 
 ### "One shot" mode
 
