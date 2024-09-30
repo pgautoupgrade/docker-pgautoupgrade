@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "0 0 * * 0"
 
+env:
+  LATEST_POSTGRES_VERSION: "17"
+
 jobs:
   base-images:
     # for security reason, we only build these images in our repository and on the main branch
@@ -150,7 +153,7 @@ jobs:
           cache-from: "${{ env.CACHE_FROM }}"
 
       - name: Push latest image
-        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == '16' && matrix.operating_system.flavor == 'alpine'
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == env.LATEST_POSTGRES_VERSION && matrix.operating_system.flavor == 'alpine'
         uses: docker/build-push-action@v6
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
