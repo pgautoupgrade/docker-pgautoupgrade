@@ -359,6 +359,7 @@ _main() {
 
 	# For development of pgautoupgrade.  This spot leaves the container running, prior to the pgautoupgrade scripting
 	# executing
+	local UPGRADE_PERFORMED=0
 	if [ "x${PGAUTO_DEVEL}" = "xbefore" ]; then
 		echo "---------------------------------------------------------------------------"
 		echo "In pgautoupgrade development mode, paused prior to pgautoupgrade scripting."
@@ -540,7 +541,7 @@ _main() {
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
 			bin_path=$(get_bin_path)
-			${bin_path}/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B "${bin_path}" --socketdir="/var/run/postgresql"
+			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B "${bin_path}" --socketdir="/var/run/postgresql"
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"
@@ -572,6 +573,8 @@ _main() {
 			echo "Removing left over database files is complete"
 			echo "---------------------------------------------"
 
+			UPGRADE_PERFORMED=1
+
 			echo "**********************************************************"
 			echo "Automatic upgrade process finished with no errors reported"
 			echo "**********************************************************"
@@ -588,13 +591,17 @@ _main() {
 			sleep 5
 		done
 	else
-		if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
-			echo "*****************************************************************************************************"
-			echo "'One shot' automatic upgrade was requested, so exiting now rather than starting the PostgreSQL server"
-			echo "*****************************************************************************************************"
-		else
-			exec "$@"
+		# If the upgrade process ran, then we need to launch the post-upgrade script in the background
+		if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
+			TIMESTAMP_NOW=$(date +'%Y.%m.%d-%H.%M')
+			echo "**********************************************************************************************************************"
+			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${PGAUTO_ONESHOT}" 2>&1 | tee "${PGDATA}/${TIMESTAMP_NOW}-pgautoupgrade.log" &
+			echo "Post upgrade script launched, with output being saved to ${PGDATA}/${TIMESTAMP_NOW}-pgautoupgrade.log in the container"
+			echo "**********************************************************************************************************************"
 		fi
+
+		# Start PostgreSQL
+		exec "$@"
 	fi
 }
 

@@ -1,4 +1,4 @@
-ARG PGTARGET=16
+ARG PGTARGET=17
 
 ### Things we need in all build containers
 FROM debian:bookworm AS base-build
@@ -173,6 +173,9 @@ RUN apt update && \
 
 # Pass the PG build target through to the running image
 ENV PGTARGET=${PGTARGET}
+
+# Copy across the post-upgrade shell script
+COPY pgautoupgrade-postupgrade.sh /usr/local/bin/
 
 # Set up the script run by the container when it starts
 WORKDIR /var/lib/postgresql
