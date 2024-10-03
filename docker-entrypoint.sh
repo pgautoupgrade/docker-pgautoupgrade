@@ -575,9 +575,11 @@ _main() {
 
 			UPGRADE_PERFORMED=1
 
-			echo "**********************************************************"
-			echo "Automatic upgrade process finished with no errors reported"
-			echo "**********************************************************"
+			echo "***************************************************************************************"
+			echo "Automatic upgrade process finished upgrading the data format to PostgreSQL ${PGTARGET}."
+			echo "The database has not yet been reindexed nor updated the query planner stats.  Those    "
+			echo "will be done by a background task shortly.                                             "
+			echo "***************************************************************************************"
 		fi
 
 		### The main pgautoupgrade scripting ends here ###
@@ -614,6 +616,9 @@ _main() {
 			fi
 		fi
 	fi
+
+	# Run a sync before exiting, just to ensure everything is flushed to disk before docker terminates the process
+	sync
 }
 
 if ! _is_sourced; then

@@ -57,7 +57,7 @@ like to upgrade to, then change your docker image to match:
 
 ### "One shot" mode
 
-If you just want to perform the upgrade without starting PostgreSQL
+If you just want to perform the upgrade without running PostgreSQL
 afterwards, then you can use "[One Shot](https://github.com/pgautoupgrade/docker-pgautoupgrade/issues/13)" mode.
 
 To do that, add an environment variable called `PGAUTO_ONESHOT`

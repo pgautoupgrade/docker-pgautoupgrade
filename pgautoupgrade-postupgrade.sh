@@ -85,3 +85,6 @@ else
 	echo "Post upgrade tasks have finished successfully.  PostgreSQL should now be fully updated and online"
 	echo "*************************************************************************************************"
 fi
+
+# Run a sync before exiting, just to ensure everything is flushed to disk before docker terminates the process
+sync
