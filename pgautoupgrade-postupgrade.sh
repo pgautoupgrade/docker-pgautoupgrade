@@ -82,6 +82,6 @@ if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
 	pg_ctl stop -D "${PGDATA}"
 else
 	echo "*************************************************************************************************"
-	echo "Post upgrade tasks have finished successfully.  PostgreSQL should now be fully updated and usable"
+	echo "Post upgrade tasks have finished successfully.  PostgreSQL should now be fully updated and online"
 	echo "*************************************************************************************************"
 fi

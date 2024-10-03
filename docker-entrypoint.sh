@@ -591,17 +591,29 @@ _main() {
 			sleep 5
 		done
 	else
-		# If the upgrade process ran, then we need to launch the post-upgrade script in the background
+		# If the upgrade process ran, then we need to launch the post-upgrade script in the background while PG runs
 		if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
 			TIMESTAMP_NOW=$(date +'%Y.%m.%d-%H.%M')
 			echo "**********************************************************************************************************************"
 			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${PGAUTO_ONESHOT}" 2>&1 | tee "${PGDATA}/${TIMESTAMP_NOW}-pgautoupgrade.log" &
 			echo "Post upgrade script launched, with output being saved to ${PGDATA}/${TIMESTAMP_NOW}-pgautoupgrade.log in the container"
 			echo "**********************************************************************************************************************"
-		fi
 
-		# Start PostgreSQL
-		exec "$@"
+			# Start PostgreSQL
+			exec "$@"
+		else
+			# If no upgrade was performed, then we start PostgreSQL as per normal as long as "one shot" mode wasn't requested
+			if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
+				echo "***********************************************************************************"
+				echo "'One shot' automatic upgrade was requested, so exiting as there is no upgrade to do"
+				echo "If you're seeing this message and expecting an upgrade to be happening, it probably"
+				echo "means the container is being started in a loop and a previous run already did it :)"
+				echo "***********************************************************************************"
+			else
+				# Start PostgreSQL
+				exec "$@"
+			fi
+		fi
 	fi
 }
 
