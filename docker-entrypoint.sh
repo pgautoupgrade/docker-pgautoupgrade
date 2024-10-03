@@ -593,11 +593,10 @@ _main() {
 	else
 		# If the upgrade process ran, then we need to launch the post-upgrade script in the background while PG runs
 		if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
-			TIMESTAMP_NOW=$(date +'%Y.%m.%d-%H.%M')
-			echo "**********************************************************************************************************************"
-			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${PGAUTO_ONESHOT}" 2>&1 | tee "${PGDATA}/${TIMESTAMP_NOW}-pgautoupgrade.log" &
-			echo "Post upgrade script launched, with output being saved to ${PGDATA}/${TIMESTAMP_NOW}-pgautoupgrade.log in the container"
-			echo "**********************************************************************************************************************"
+			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${PGAUTO_ONESHOT}" 2>&1 &
+			echo "****************************"
+			echo "Post upgrade script launched"
+			echo "****************************"
 
 			# Start PostgreSQL
 			exec "$@"
