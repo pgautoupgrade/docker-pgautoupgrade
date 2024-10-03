@@ -359,6 +359,7 @@ _main() {
 
 	# For development of pgautoupgrade.  This spot leaves the container running, prior to the pgautoupgrade scripting
 	# executing
+	local UPGRADE_PERFORMED=0
 	if [ "x${PGAUTO_DEVEL}" = "xbefore" ]; then
 		echo "---------------------------------------------------------------------------"
 		echo "In pgautoupgrade development mode, paused prior to pgautoupgrade scripting."
@@ -540,7 +541,7 @@ _main() {
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
 			bin_path=$(get_bin_path)
-			${bin_path}/pg_upgrade --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B "${bin_path}" --socketdir="/var/run/postgresql"
+			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B "${bin_path}" --socketdir="/var/run/postgresql"
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"
@@ -572,9 +573,13 @@ _main() {
 			echo "Removing left over database files is complete"
 			echo "---------------------------------------------"
 
-			echo "**********************************************************"
-			echo "Automatic upgrade process finished with no errors reported"
-			echo "**********************************************************"
+			UPGRADE_PERFORMED=1
+
+			echo "***************************************************************************************"
+			echo "Automatic upgrade process finished upgrading the data format to PostgreSQL ${PGTARGET}."
+			echo "The database has not yet been reindexed nor updated the query planner stats.  Those    "
+			echo "will be done by a background task shortly.                                             "
+			echo "***************************************************************************************"
 		fi
 
 		### The main pgautoupgrade scripting ends here ###
@@ -588,14 +593,32 @@ _main() {
 			sleep 5
 		done
 	else
-		if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
-			echo "*****************************************************************************************************"
-			echo "'One shot' automatic upgrade was requested, so exiting now rather than starting the PostgreSQL server"
-			echo "*****************************************************************************************************"
-		else
+		# If the upgrade process ran, then we need to launch the post-upgrade script in the background while PG runs
+		if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
+			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${PGAUTO_ONESHOT}" 2>&1 &
+			echo "****************************"
+			echo "Post upgrade script launched"
+			echo "****************************"
+
+			# Start PostgreSQL
 			exec "$@"
+		else
+			# If no upgrade was performed, then we start PostgreSQL as per normal as long as "one shot" mode wasn't requested
+			if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
+				echo "***********************************************************************************"
+				echo "'One shot' automatic upgrade was requested, so exiting as there is no upgrade to do"
+				echo "If you're seeing this message and expecting an upgrade to be happening, it probably"
+				echo "means the container is being started in a loop and a previous run already did it :)"
+				echo "***********************************************************************************"
+			else
+				# Start PostgreSQL
+				exec "$@"
+			fi
 		fi
 	fi
+
+	# Run a sync before exiting, just to ensure everything is flushed to disk before docker terminates the process
+	sync
 }
 
 if ! _is_sourced; then

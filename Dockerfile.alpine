@@ -1,4 +1,4 @@
-ARG PGTARGET=16
+ARG PGTARGET=17
 
 ### Things we need in all build containers
 FROM alpine:3.20 AS base-build
@@ -178,6 +178,9 @@ RUN apk update && \
 
 # Pass the PG build target through to the running image
 ENV PGTARGET=${PGTARGET}
+
+# Copy across the post-upgrade shell script
+COPY pgautoupgrade-postupgrade.sh /usr/local/bin/
 
 # Set up the script run by the container when it starts
 WORKDIR /var/lib/postgresql
