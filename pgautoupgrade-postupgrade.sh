@@ -2,13 +2,14 @@
 
 set -e
 
-if [ $# -ne 2 ]; then
-	echo "Required number of arguments not passed to post upgrade script.  2 expected, $# received"
+if [ $# -ne 3 ]; then
+	echo "Required number of arguments not passed to post upgrade script.  3 expected, $# received"
 	exit 1
 fi
 
 PGDATA=$1
-PGAUTO_ONESHOT=$2
+POSTGRES_DB=$2
+PGAUTO_ONESHOT=$3
 
 # Wait for PostgreSQL to start and become available
 COUNT=0
@@ -37,7 +38,7 @@ if [ $RUNNING -ne 0 ]; then
 fi
 
 # Get the list of databases in the database cluster
-DB_LIST=$(echo 'SELECT datname FROM pg_catalog.pg_database WHERE datistemplate IS FALSE' | psql -1t --csv postgres)
+DB_LIST=$(echo 'SELECT datname FROM pg_catalog.pg_database WHERE datistemplate IS FALSE' | psql -1t --csv "${POSTGRES_DB}")
 
 # Update query planner statistics
 echo "----------------------------"

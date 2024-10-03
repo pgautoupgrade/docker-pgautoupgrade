@@ -595,7 +595,7 @@ _main() {
 	else
 		# If the upgrade process ran, then we need to launch the post-upgrade script in the background while PG runs
 		if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
-			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${PGAUTO_ONESHOT}" 2>&1 &
+			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${POSTGRES_DB}" "${PGAUTO_ONESHOT}" 2>&1 &
 			echo "****************************"
 			echo "Post upgrade script launched"
 			echo "****************************"
