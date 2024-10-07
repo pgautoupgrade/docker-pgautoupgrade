@@ -361,9 +361,9 @@ _main() {
 	# executing
 	local UPGRADE_PERFORMED=0
 	if [ "x${PGAUTO_DEVEL}" = "xbefore" ]; then
-		echo "---------------------------------------------------------------------------"
-		echo "In pgautoupgrade development mode, paused prior to pgautoupgrade scripting."
-		echo "---------------------------------------------------------------------------"
+		echo "--------------------------------------------------------------------------"
+		echo "In pgautoupgrade development mode, paused prior to pgautoupgrade scripting"
+		echo "--------------------------------------------------------------------------"
 		while :; do
 			sleep 5
 		done
@@ -588,7 +588,10 @@ _main() {
 	# For development of pgautoupgrade.  This spot leaves the container running, after the pgautoupgrade scripting has
 	# executed, but without subsequently running the PostgreSQL server
 	if [ "x${PGAUTO_DEVEL}" = "xserver" ]; then
-		echo "In pgautoupgrade development mode, so database server not started."
+		echo "-------------------------------------------------------------------"
+		echo "In pgautoupgrade development mode, paused after main pg_upgrade has"
+		echo "run, but before database server and post-upgrade tasks have started"
+		echo "-------------------------------------------------------------------"
 		while :; do
 			sleep 5
 		done

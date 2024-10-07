@@ -81,7 +81,7 @@ To build the development docker image, use:
 $ make dev
 ```
 
-This will take a few minutes to create the "pgautoupgrade:latest"
+This will take a few minutes to create the "pgautoupgrade:local"
 docker image, that you can use in your docker-compose.yml
 files.
 
