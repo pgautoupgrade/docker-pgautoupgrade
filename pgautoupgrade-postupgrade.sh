@@ -38,7 +38,7 @@ if [ $RUNNING -ne 0 ]; then
 fi
 
 # Get the list of databases in the database cluster
-DB_LIST=$(echo 'SELECT datname FROM pg_catalog.pg_database WHERE datistemplate IS FALSE' | psql -1t --csv "${POSTGRES_DB}")
+DB_LIST=$(echo 'SELECT datname FROM pg_catalog.pg_database WHERE datistemplate IS FALSE' | psql --username="${POSTGRES_USER}" -1t --csv "${POSTGRES_DB}")
 
 # Update query planner statistics
 echo "----------------------------"
@@ -46,7 +46,7 @@ echo "Updating query planner stats"
 echo "----------------------------"
 
 for DATABASE in ${DB_LIST}; do
-	echo "VACUUM (ANALYZE, VERBOSE, INDEX_CLEANUP FALSE)" | psql -t --csv "${DATABASE}"
+	echo "VACUUM (ANALYZE, VERBOSE, INDEX_CLEANUP FALSE)" | psql --username="${POSTGRES_USER}" -t --csv "${DATABASE}"
 done
 
 echo "-------------------------------------"
@@ -64,7 +64,7 @@ for DATABASE in ${DB_LIST}; do
 	echo "Starting reindex of ${DATABASE}"
 	echo "-------------------------------"
 
-	echo 'REINDEX DATABASE CONCURRENTLY' | psql -t --csv "${DATABASE}"
+	echo 'REINDEX DATABASE CONCURRENTLY' | psql --username="${POSTGRES_USER}" -t --csv "${DATABASE}"
 
 	echo "-------------------------------"
 	echo "Finished reindex of ${DATABASE}"
