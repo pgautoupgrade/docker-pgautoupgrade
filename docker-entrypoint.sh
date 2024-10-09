@@ -471,6 +471,7 @@ _main() {
 				# With a failure at this point we should be able to move the old data back
 				# to its original location
 				mv -v "${OLD}"/* "${PGDATA}"
+				rmdir old
 				exit 8
 			fi
 			echo "--------------------------------------------"
