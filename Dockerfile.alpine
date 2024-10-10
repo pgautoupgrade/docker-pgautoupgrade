@@ -180,11 +180,13 @@ RUN apk update && \
 ENV PGTARGET=${PGTARGET}
 
 # Copy across the post-upgrade shell script
-COPY pgautoupgrade-postupgrade.sh /usr/local/bin/
+COPY pgautoupgrade-postupgrade.sh healthcheck.sh /usr/local/bin/
 
 # Set up the script run by the container when it starts
 WORKDIR /var/lib/postgresql
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+HEALTHCHECK CMD /usr/local/bin/healthcheck-script.sh
 
 CMD ["postgres"]
