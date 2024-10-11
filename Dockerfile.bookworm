@@ -182,6 +182,6 @@ WORKDIR /var/lib/postgresql
 COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-HEALTHCHECK CMD /usr/local/bin/healthcheck-script.sh
+HEALTHCHECK CMD /usr/local/bin/healthcheck.sh
 
 CMD ["postgres"]
