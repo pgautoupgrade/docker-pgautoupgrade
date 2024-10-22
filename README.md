@@ -133,15 +133,14 @@ To run the tests, use:
 $ make test
 ```
 
-The test script creates an initial PostgreSQL database for
-Redash using an older PG version, then starts Redash using
-the above "automatic updating" PostgreSQL image to update
-the database to the latest PostgreSQL version.
+The test script imports the AdventureWorks database (ported from Microsoft
+land) into an older PG version, then starts the pgautoupgrade container to
+update the database to the latest PostgreSQL version.
 
 It then checks that the database files were indeed updated
 to the newest PostgreSQL release, and outputs an obvious
 SUCCESS/FAILURE message for that loop.
 
 The test runs in a loop, testing (in sequence) upgrades from
-PostgreSQL versions 9.5, 9.6, 10.x, 11.x, 12.x, 13.x, 14.x
-and 15.x.
+PostgreSQL versions 9.5, 9.6, 10.x, 11.x, 12.x, 13.x, 14.x, 15.x., 16.x and
+17.x.
