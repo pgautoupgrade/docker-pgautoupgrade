@@ -1,3 +1,6 @@
 pgstuff
 test/postgres-data
 .idea
+
+test/AdventureWorks.sql
+test/AdventureWorks.tar.xz

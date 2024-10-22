@@ -25,6 +25,18 @@ test_down() {
     docker compose -f test/docker-compose-pgauto.yml down
 }
 
+import_adventure_works() {
+    # Create the PostgreSQL database using a specific version of PostgreSQL
+    docker compose -f "docker-compose-pg${VERSION}.yml" up -d --wait
+
+    # Create a database and import AdventureWorks
+    docker compose -f "docker-compose-pg${VERSION}.yml" exec postgres createdb -U postgres AdventureWorks
+    cat AdventureWorks.sql | docker compose -f "docker-compose-pg${VERSION}.yml" exec --no-TTY postgres psql -U postgres -d AdventureWorks > /dev/null 2>&1
+
+    # Shutdown the existing version
+    docker compose -f "docker-compose-pg${VERSION}.yml" down -v
+}
+
 test_run() {
     VERSION=$1
     TARGET=$2
@@ -36,10 +48,9 @@ test_run() {
         sudo rm -rf postgres-data
     fi
 
-    # Create the PostgreSQL database using a specific version of PostgreSQL
-    docker compose -f "docker-compose-pg${VERSION}.yml" run --rm server create_db
+    import_adventure_works
 
-    # Start Redash normally, using an "autoupdate" version of PostgreSQL
+    # Start pgautoupgrade container
     TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f docker-compose-pgauto.yml up --wait -d
 
     # Verify the PostgreSQL data files are now the target version
@@ -62,8 +73,7 @@ test_run() {
     ##
     banner '-' "Testing 'one shot' automatic upgrade mode for PostgreSQL ${VERSION} to ${TARGET}"
 
-    # Create the PostgreSQL database using a specific version of PostgreSQL
-    docker compose -f "docker-compose-pg${VERSION}.yml" run --rm server create_db
+    import_adventure_works
 
     # Shut down all of the containers
     docker compose -f "docker-compose-pg${VERSION}.yml" down --remove-orphans
@@ -101,6 +111,11 @@ fi
 
 # Change into the test directory
 cd test || exit 1
+
+echo "Downloading and extracting the AdventureWork database ..."
+rm -rf AdventureWorks.tar.xz AdventureWorks.sql
+curl -L -o AdventureWorks.tar.xz "https://github.com/pgautoupgrade/AdventureWorks-for-Postgres/raw/refs/heads/master/AdventureWorks.tar.xz"
+tar -xf AdventureWorks.tar.xz
 
 for version in "${PG_VERSIONS[@]}"; do
     # Only test if the version is less than the latest version
