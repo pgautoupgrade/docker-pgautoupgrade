@@ -71,6 +71,19 @@ $ docker run --name pgauto -it \
 	<NAME_OF_THE_PGAUTOUPGRADE_IMAGE>
 ```
 
+### Skip reindexing
+
+By default, all databases are reindexed after the migration, which can take some time if they are large.
+To skip reindexing, set the environment variable `PGAUTO_REINDEX` to `no`, for example:
+
+```
+$ docker run --name pgauto -it \
+	--mount type=bind,source=/path/to/your/database/directory,target=/var/lib/postgresql/data \
+	-e POSTGRES_PASSWORD=password \
+	-e PGAUTO_REINDEX=no \
+	<NAME_OF_THE_PGAUTOUPGRADE_IMAGE>
+```
+
 # For Developers
 
 ## Building the image

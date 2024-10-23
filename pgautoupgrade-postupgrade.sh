@@ -53,27 +53,29 @@ echo "-------------------------------------"
 echo "Finished updating query planner stats"
 echo "-------------------------------------"
 
-# Reindex the databases
-echo "------------------------"
-echo "Reindexing the databases"
-echo "------------------------"
-
-# For each database, reindex it
-for DATABASE in ${DB_LIST}; do
-	echo "-------------------------------"
-	echo "Starting reindex of ${DATABASE}"
-	echo "-------------------------------"
-
-	echo 'REINDEX DATABASE CONCURRENTLY' | psql --username="${POSTGRES_USER}" -t --csv "${DATABASE}"
-
-	echo "-------------------------------"
-	echo "Finished reindex of ${DATABASE}"
-	echo "-------------------------------"
-done
-
-echo "-------------------------------"
-echo "End of reindexing the databases"
-echo "-------------------------------"
+if [ "x${PGAUTO_REINDEX}" != "xno" ]; then
+        # Reindex the databases
+        echo "------------------------"
+        echo "Reindexing the databases"
+        echo "------------------------"
+        
+        # For each database, reindex it
+        for DATABASE in ${DB_LIST}; do
+        	echo "-------------------------------"
+        	echo "Starting reindex of ${DATABASE}"
+        	echo "-------------------------------"
+        
+        	echo 'REINDEX DATABASE CONCURRENTLY' | psql --username="${POSTGRES_USER}" -t --csv "${DATABASE}"
+        
+        	echo "-------------------------------"
+        	echo "Finished reindex of ${DATABASE}"
+        	echo "-------------------------------"
+        done
+        
+        echo "-------------------------------"
+        echo "End of reindexing the databases"
+        echo "-------------------------------"
+fi
 
 # If "one shot" mode was requested, then shut down PostgreSQL
 if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
