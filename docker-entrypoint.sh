@@ -2,6 +2,9 @@
 set -Eeo pipefail
 # TODO swap to -Eeuo pipefail above (after handling all potentially-unset variables)
 
+# Define the path to the upgrade lock file using PGDATA if set, otherwise default
+UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql/data}/upgrade_in_progress.lock"
+
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
 # (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
@@ -308,6 +311,18 @@ get_bin_path() {
   fi
 }
 
+# Function to create the upgrade lock file
+create_upgrade_lock_file() {
+  echo "Creating upgrade lock file at $UPGRADE_LOCK_FILE"
+  touch "$UPGRADE_LOCK_FILE"
+}
+
+# Function to remove the upgrade lock file
+remove_upgrade_lock_file() {
+  echo "Removing upgrade lock file at $UPGRADE_LOCK_FILE"
+  rm -f "$UPGRADE_LOCK_FILE"
+}
+
 _main() {
 	# if first arg looks like a flag, assume we want to run postgres server
 	if [ "${1:0:1}" = '-' ]; then
@@ -382,6 +397,7 @@ _main() {
 
 		# If the version of PostgreSQL data files doesn't match our desired version, then upgrade them
 		if [ "${PGVER}" != "${PGTARGET}" ]; then
+			create_upgrade_lock_file
 			# Ensure the database files are a version we can upgrade
 			local RECOGNISED=0
 			local OLDPATH=unset
@@ -581,6 +597,7 @@ _main() {
 			echo "The database has not yet been reindexed nor updated the query planner stats.  Those    "
 			echo "will be done by a background task shortly.                                             "
 			echo "***************************************************************************************"
+			remove_upgrade_lock_file
 		fi
 
 		### The main pgautoupgrade scripting ends here ###
@@ -624,6 +641,12 @@ _main() {
 	# Run a sync before exiting, just to ensure everything is flushed to disk before docker terminates the process
 	sync
 }
+
+# Check if an upgrade lock file exists at script start and exit if it does
+if [ -f "$UPGRADE_LOCK_FILE" ]; then
+  echo "Upgrade lock file already exists, indicating an incomplete previous upgrade. Exiting."
+  exit 1
+fi
 
 if ! _is_sourced; then
 	_main "$@"
