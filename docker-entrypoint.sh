@@ -3,7 +3,7 @@ set -Eeo pipefail
 # TODO swap to -Eeuo pipefail above (after handling all potentially-unset variables)
 
 # Define the path to the upgrade lock file using PGDATA if set, otherwise default
-UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql}/upgrade_in_progress.lock"
+UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql/data}/upgrade_in_progress.lock"
 
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
