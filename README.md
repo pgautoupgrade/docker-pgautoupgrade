@@ -20,6 +20,10 @@ This Docker image does an in-place upgrade of the database
 data, so if something goes wrong you are expected to already
 have backups you can restore from.
 
+Also, remove any healthchecks.
+Due to how we perform the update process, we had to implement our own healthcheck.
+So no extra healthcheck is needed.
+
 ## How to use this image
 
 This image is on Docker Hub:
