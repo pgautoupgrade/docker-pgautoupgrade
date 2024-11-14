@@ -48,6 +48,15 @@ test_run() {
         sudo rm -rf postgres-data
     fi
 
+    # Start an empty pgautoupgrade container to make sure this is possible as well
+    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f docker-compose-pgauto.yml up --wait -d
+
+    # Shut down any containers that are still running
+    docker compose -f docker-compose-pgauto.yml down --remove-orphans
+
+    # Delete the upgraded PostgreSQL data directory
+    sudo rm -rf postgres-data
+
     import_adventure_works
 
     # Start pgautoupgrade container
