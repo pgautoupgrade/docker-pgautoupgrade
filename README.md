@@ -14,15 +14,16 @@ official Docker PostgreSQL image has no ability to handle
 version upgrades, which leaves people to figure it out
 manually (not great): https://github.com/docker-library/postgres/issues/37
 
-## WARNING! Backup your data!
+> [!WARNING]
+> Backup your data!
+> This Docker image does an in-place upgrade of the database
+> data, so if something goes wrong you are expected to already
+> have backups you can restore from.
 
-This Docker image does an in-place upgrade of the database
-data, so if something goes wrong you are expected to already
-have backups you can restore from.
-
-Also, remove any healthchecks.
-Due to how we perform the update process, we had to implement our own healthcheck.
-So no extra healthcheck is needed.
+> [!IMPORTANT]
+> Also, remove any healthchecks.
+> Due to how we perform the update process, we had to implement our own healthcheck.
+> So no extra healthcheck is needed.
 
 ## How to use this image
 
