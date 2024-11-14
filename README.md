@@ -97,6 +97,21 @@ $ docker run --name pgauto -it \
 > [!WARNING]
 > PG v15 and below do not support reindexing system tables in a database concurrently. This means, when we start the indexing operation, database locks are placed which do not allow for any modifications as long as the task is running. We recommend using PG v16 or later where this is not an issue.
 
+### Upgrading from a Bitnami container
+
+If you used the Postgres image by Bitnami, we have made a couple of adjustments to make this upgrade work as well.
+
+The Bitnami containers do not persist the `postgresql.conf` and `pg_hba.conf` file in the Postgres data directory. If we detect that these files are missing, we will copy a default version of these files into the data directory. If you request the "one shot" mode, these files will be removed again at the end of the upgrade process.
+
+The official Postgres image, and therefore ours as well, use `999` as ID for the postgres user inside the container. Bitnami uses 1001. During the upgrade process, we make a copy of the data, which will be assigned to ID `999`. If you request the "one shot" mode, the original file permissions will be restored once the upgrade is completed.
+
+Be aware that we use the environment variables from the official Postgres image. Ensure you set `PGDATA` to the Bitnami folder (by default `/bitnami/postgresql`) and `POSTGRES_PASSWORD` to the password of your Postgres user.
+
+The container has to run as `root` if using `one shot` mode, otherwise we are unable to restore the existing file permissions of your Postgres data directory. You can run the container as user `999`, but then you will have to manually apply the file permissions to your Postgres data directory.
+
+> [!WARNING]
+> As of writing this paragraph (14th of November, 2024), we only tested upgrading from Bitnami Postgres v13, v14, v15, v16 to v17. For these versions, we used the latest available container version. Bitnami's script and directory structure could change over time. If you note any issues upgrading from other versions, please provide the exact SHA of the image so we can try to replicate the issue.
+
 # For Developers
 
 ## Building the image
