@@ -76,7 +76,7 @@ $ docker run --name pgauto -it \
 	<NAME_OF_THE_PGAUTOUPGRADE_IMAGE>
 ```
 
-### Skip reindexing
+### Reindexing
 
 By default, all databases are reindexed after the migration, which can take some time if they are large.
 To skip reindexing, set the environment variable `PGAUTO_REINDEX` to `no`, for example:
@@ -88,6 +88,9 @@ $ docker run --name pgauto -it \
 	-e PGAUTO_REINDEX=no \
 	<NAME_OF_THE_PGAUTOUPGRADE_IMAGE>
 ```
+
+> [!WARNING]
+> PG v15 and below do not support reindexing system tables in a database concurrently. This means, when we run start the indexing operation, database locks are placed which do not allow for any modifications as long as the task is running. We recommend using PG v16 or v17 where this is not an issue.
 
 # For Developers
 
