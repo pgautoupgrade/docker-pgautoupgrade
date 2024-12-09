@@ -9,19 +9,19 @@ ENV PG96=9.6.24
 ENV PG10=10.23
 ENV PG11=11.22
 
-# renovate: datasource=repology depName=macports/postgresql12-server versioning=loose
+# renovate: datasource=repology depName=homebrew/postgresql@12 versioning=loose
 ENV PG12_VERSION=12.22
 
-# renovate: datasource=repology depName=macports/postgresql13-server versioning=loose
+# renovate: datasource=repology depName=homebrew/postgresql@13 versioning=loose
 ENV PG13_VERSION=13.18
 
-# renovate: datasource=repology depName=macports/postgresql14-server versioning=loose
+# renovate: datasource=repology depName=homebrew/postgresql@14 versioning=loose
 ENV PG14_VERSION=14.15
 
-# renovate: datasource=repology depName=macports/postgresql15-server versioning=loose
+# renovate: datasource=repology depName=homebrew/postgresql@15 versioning=loose
 ENV PG15_VERSION=15.10
 
-# renovate: datasource=repology depName=macports/postgresql16-server versioning=loose
+# renovate: datasource=repology depName=homebrew/postgresql@16 versioning=loose
 ENV PG16_VERSION=16.6
 
 # Where we'll do all our compiling and similar
