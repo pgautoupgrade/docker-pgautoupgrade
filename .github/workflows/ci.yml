@@ -7,6 +7,8 @@ on:
     - cron: "0 0 * * 0"
 
 env:
+  # renovate: datasource=docker depName=alpine versioning=docker
+  ALPINE_VERSION: "3.20"
   LATEST_POSTGRES_VERSION: "17"
 
 jobs:
@@ -81,7 +83,7 @@ jobs:
       matrix:
         operating_system:
           - flavor: "alpine"
-            version: "3.20"
+            version: "${{ env.ALPINE_VERSION }}"
           - flavor: "bookworm"
         pg_target:
           - "12"
