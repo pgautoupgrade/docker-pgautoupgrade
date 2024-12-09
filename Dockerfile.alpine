@@ -168,9 +168,9 @@ RUN if [ "${PGTARGET}" -eq 14 ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /us
 RUN if [ "${PGTARGET}" -eq 15 ]; then rm -rf /usr/local-pg15 /usr/local-pg16; fi
 RUN if [ "${PGTARGET}" -eq 16 ]; then rm -rf /usr/local-pg16; fi
 
-# Install locale
+# Install locale and bc command for comparisons
 RUN apk update && \
-  apk add --update icu-data-full musl musl-utils musl-locales tzdata && \
+  apk add --update bc icu-data-full musl musl-utils musl-locales tzdata && \
   apk cache clean
 
 ## FIXME: Only useful while developing this Dockerfile
