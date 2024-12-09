@@ -1,7 +1,10 @@
 ARG PGTARGET=17
 
+# renovate: datasource=docker depName=alpine versioning=loose
+ARG ALPINE_VERSION=3.20
+
 ### Things we need in all build containers
-FROM alpine:3.20 AS base-build
+FROM alpine:${ALPINE_VERSION} AS base-build
 
 # The versions of PostgreSQL to use
 ENV PG95=9.5.25
@@ -145,7 +148,7 @@ RUN cd postgresql-16.* && \
   rm -rf /usr/local-pg16/include
 
 # Use the PostgreSQL Alpine image as our output image base
-FROM postgres:${PGTARGET}-alpine3.20
+FROM postgres:${PGTARGET}-alpine${ALPINE_VERSION}
 
 # We need to define this here, to make the above PGTARGET available after the FROM
 ARG PGTARGET
