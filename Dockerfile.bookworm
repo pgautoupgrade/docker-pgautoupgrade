@@ -22,7 +22,7 @@ ENV PG14_VERSION=14.13
 ENV PG15_VERSION=15.8
 
 # renovate: datasource=repology depName=macports/postgresql16-server versioning=loose
-ENV PG16_VERSION=16.4
+ENV PG16_VERSION=16.6
 
 # Where we'll do all our compiling and similar
 ENV BUILD_ROOT=/buildroot
