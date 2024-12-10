@@ -166,9 +166,9 @@ RUN if [ "${PGTARGET}" -eq 14 ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /us
 RUN if [ "${PGTARGET}" -eq 15 ]; then rm -rf /usr/local-pg15 /usr/local-pg16; fi
 RUN if [ "${PGTARGET}" -eq 16 ]; then rm -rf /usr/local-pg16; fi
 
-# Install locale and bc command for comparisons
+# Install locale
 RUN apt update && \
-  apt install -y bc icu-devtools locales tzdata && \
+  apt install -y icu-devtools locales tzdata && \
   apt clean
 
 # Pass the PG build target through to the running image

@@ -59,7 +59,7 @@ if [ "x${PGAUTO_REINDEX}" != "xno" ]; then
         echo "Reindexing the databases"
         echo "------------------------"
 
-		if [[ $(echo "15 <= $PGTARGET" | bc) -eq 0 ]]; then
+		if [[ "$PGTARGET" -le 15 ]]; then
 			reindexdb --all --username="${POSTGRES_USER}"
 		else
 			reindexdb --all --concurrently --username="${POSTGRES_USER}"
