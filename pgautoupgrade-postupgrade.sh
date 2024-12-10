@@ -58,19 +58,12 @@ if [ "x${PGAUTO_REINDEX}" != "xno" ]; then
         echo "------------------------"
         echo "Reindexing the databases"
         echo "------------------------"
-        
-        # For each database, reindex it
-        for DATABASE in ${DB_LIST}; do
-        	echo "-------------------------------"
-        	echo "Starting reindex of ${DATABASE}"
-        	echo "-------------------------------"
-        
-        	echo 'REINDEX DATABASE CONCURRENTLY' | psql --username="${POSTGRES_USER}" -t --csv "${DATABASE}"
-        
-        	echo "-------------------------------"
-        	echo "Finished reindex of ${DATABASE}"
-        	echo "-------------------------------"
-        done
+
+		if [[ "$PGTARGET" -le 15 ]]; then
+			reindexdb --all --username="${POSTGRES_USER}"
+		else
+			reindexdb --all --concurrently --username="${POSTGRES_USER}"
+		fi
         
         echo "-------------------------------"
         echo "End of reindexing the databases"
