@@ -16,7 +16,7 @@ ENV PG12_VERSION=12.20
 ENV PG13_VERSION=13.16
 
 # renovate: datasource=repology depName=macports/postgresql14-server versioning=loose
-ENV PG14_VERSION=14.13
+ENV PG14_VERSION=14.15
 
 # renovate: datasource=repology depName=macports/postgresql15-server versioning=loose
 ENV PG15_VERSION=15.8
