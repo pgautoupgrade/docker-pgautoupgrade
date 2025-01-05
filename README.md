@@ -90,7 +90,7 @@ $ docker run --name pgauto -it \
 ```
 
 > [!WARNING]
-> PG v15 and below do not support reindexing system tables in a database concurrently. This means, when we run start the indexing operation, database locks are placed which do not allow for any modifications as long as the task is running. We recommend using PG v16 or v17 where this is not an issue.
+> PG v15 and below do not support reindexing system tables in a database concurrently. This means, when we start the indexing operation, database locks are placed which do not allow for any modifications as long as the task is running. We recommend using PG v16 or later where this is not an issue.
 
 # For Developers
 
