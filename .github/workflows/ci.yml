@@ -156,7 +156,22 @@ jobs:
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
 
-      - name: Push latest image
+      - name: Push latest image for each supported OS
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == env.LATEST_POSTGRES_VERSION
+        uses: docker/build-push-action@v6
+        with:
+          file: "Dockerfile.${{ matrix.operating_system.flavor }}"
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            "pgautoupgrade/pgautoupgrade:${{ matrix.operating_system.flavor }}"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.operating_system.alias }}"
+          build-args: |
+            "PGTARGET=${{ matrix.pg_target }}"
+          push: true
+          cache-to: type=inline
+          cache-from: "${{ env.CACHE_FROM }}"
+
+      - name: Push general latest image
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == env.LATEST_POSTGRES_VERSION && matrix.operating_system.flavor == 'alpine'
         uses: docker/build-push-action@v6
         with:
