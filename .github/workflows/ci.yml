@@ -84,6 +84,7 @@ jobs:
             # renovate: datasource=docker depName=alpine versioning=docker
             OS_VERSION: "3.21"
           - flavor: "bookworm"
+            alias: "debian"
         pg_target:
           - "12"
           - "13"
@@ -114,6 +115,7 @@ jobs:
           tags: |
             "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}"
             "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.alias }}"
           build-args: |
             "PGTARGET=${{ matrix.pg_target }}"
           cache-to: type=inline
@@ -147,6 +149,7 @@ jobs:
           tags: |
             "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}"
             "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}"
+            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.alias }}"
           build-args: |
             "PGTARGET=${{ matrix.pg_target }}"
           push: true
