@@ -76,6 +76,7 @@ jobs:
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-16-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.alias }}
 
     strategy:
       matrix:
@@ -83,7 +84,7 @@ jobs:
           - flavor: "alpine"
             # renovate: datasource=docker depName=alpine versioning=docker
             OS_VERSION: "3.21"
-            alias: "debian"
+            alias: "alpine"
           - flavor: "bookworm"
             alias: "debian"
         pg_target:
