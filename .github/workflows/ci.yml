@@ -31,7 +31,6 @@ jobs:
           - "14"
           - "15"
           - "16"
-      fail-fast: false
     runs-on: "${{ matrix.runner_image }}"
 
     steps:
@@ -96,7 +95,6 @@ jobs:
           - "15"
           - "16"
           - "17"
-      fail-fast: false
     runs-on: "${{ matrix.runner_image }}"
 
     steps:
