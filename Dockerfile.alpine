@@ -83,7 +83,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG11}/postgresql-${PG11}.tar.b
   tar -xf postgresql-11*.tar.bz2
 
 RUN cd postgresql-11.* && \
-  ./configure --prefix=/usr/local-pg11 --without-zlib --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  ./configure --prefix=/usr/local-pg11 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
   make -j $(nproc) && \
   make install-world && \
   rm -rf /usr/local-pg11/include
