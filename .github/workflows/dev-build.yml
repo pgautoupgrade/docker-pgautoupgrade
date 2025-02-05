@@ -59,11 +59,17 @@ jobs:
             # Build and push container images
             # https://github.com/docker/build-push-action
             - name: Build and push ${{ matrix.tag_suffix }} image
-              uses: docker/build-push-action@v5
+              uses: docker/build-push-action@v6
+              env:
+                BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+                HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }} 
               with:
                   context: .
                   file: ${{ matrix.file }}
                   push: true
-                  tags: ghcr.io/pgautoupgrade/pgautoupgrade:${{ github.ref_name }}-${{ matrix.tag_suffix }}
+                  # ghcr.io/${{ github.repository }} not used, to match dockerhub image naming
+                  tags: |
+                    ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.BRANCH_NAME }}-${{ matrix.tag_suffix }}
+                    ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.HEAD_SHA }}-${{ matrix.tag_suffix }}
                   labels: ${{ steps.meta.outputs.labels }}
                   platforms: linux/amd64,linux/arm64
