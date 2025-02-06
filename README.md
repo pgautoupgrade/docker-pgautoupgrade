@@ -46,6 +46,11 @@ use PostgreSQL 17 you can use:
 
     pgautoupgrade/pgautoupgrade:17-alpine
 
+> [!NOTE]  
+> The images available in Github Container Registry are for debugging
+> purposes only. They are built from specific code branches for easier
+> distribution and testing of fixes.
+
 ### Debian vs Alpine based images
 
 The default official Docker PostgreSQL image is Debian Linux
