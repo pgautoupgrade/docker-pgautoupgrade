@@ -13,7 +13,7 @@ jobs:
   base-images:
     # for security reason, we only build these images in our repository and on the main branch
     if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         flavor:
@@ -57,7 +57,7 @@ jobs:
           cache-from: type=registry,ref=pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}-${{ matrix.flavor }}
 
   target-images:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: base-images
     # otherwise, it would skip the build entirely (because the base step does not run)
     if: always()
