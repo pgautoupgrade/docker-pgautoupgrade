@@ -19,10 +19,10 @@ jobs:
         strategy:
             matrix:
                 include:
-                  - file: Dockerfile.bookworm
-                    tag_suffix: debian
-                  - file: Dockerfile.alpine
-                    tag_suffix: alpine
+                    - flavor: "alpine"
+                      alias: "alpine"
+                    - flavor: "bookworm"
+                      alias: "debian"
 
         steps:
             - name: Checkout repository
@@ -62,14 +62,27 @@ jobs:
               uses: docker/build-push-action@v6
               env:
                 BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-                HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }} 
+                HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
               with:
                   context: .
-                  file: ${{ matrix.file }}
+                  file: "Dockerfile.${{ matrix.flavor }}"
                   push: true
                   # ghcr.io/${{ github.repository }} not used, to match dockerhub image naming
                   tags: |
-                    ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.BRANCH_NAME }}-${{ matrix.tag_suffix }}
-                    ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.HEAD_SHA }}-${{ matrix.tag_suffix }}
+                    ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.BRANCH_NAME }}-${{ matrix.alias }}
+                    ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.HEAD_SHA }}-${{ matrix.alias }}
                   labels: ${{ steps.meta.outputs.labels }}
                   platforms: linux/amd64,linux/arm64
+                  cache-to: type=inline
+                  cache-from: |
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.5-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-9.6-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-10-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-11-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-12-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-13-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-14-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-15-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-16-${{ matrix.flavor }}
+                    type=registry,ref=ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.BRANCH_NAME }}-${{ matrix.alias }}
+                    type=registry,ref=ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.HEAD_SHA }}-${{ matrix.alias }}
