@@ -1,7 +1,7 @@
 ARG PGTARGET=17
 
 # renovate: datasource=docker depName=alpine versioning=loose
-ARG ALPINE_VERSION=3.21
+ARG ALPINE_VERSION=3.21.3
 
 ### Things we need in all build containers
 FROM alpine:${ALPINE_VERSION} AS base-build
