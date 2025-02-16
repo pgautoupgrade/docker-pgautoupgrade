@@ -33,7 +33,6 @@ WORKDIR ${BUILD_ROOT}
 
 # Install things needed for development
 RUN apt update && \
-  apt upgrade -y && \
   apt install -y build-essential libicu-dev liblz4-dev locales tzdata zlib1g-dev libzstd-dev wget pkg-config && \
   apt clean
 
