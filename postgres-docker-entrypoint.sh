@@ -450,6 +450,13 @@ _main() {
 			echo "No artifacts found from a failed previous autoupgrade.  Continuing the process."
 			echo "-------------------------------------------------------------------------------"
 
+			if [ "$(id -u)" != "$(id -u postgres)" ]; then
+				echo "*******************************************************************************************"
+				echo "Postgres container does not yet run as postgres user. Downgrading now using gosu."
+				echo "*******************************************************************************************"
+				exec gosu postgres "$BASH_SOURCE" "$@"
+			fi
+
 			# Don't automatically abort on non-0 exit status, as that messes with these upcoming mv commands
 			set +e
 

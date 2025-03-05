@@ -105,7 +105,7 @@ The Bitnami containers do not persist the `postgresql.conf` and `pg_hba.conf` fi
 
 The official Postgres image, and therefore ours as well, use `999` as ID for the postgres user inside the container. Bitnami uses 1001. During the upgrade process, we make a copy of the data, which will be assigned to ID `999`. If you request the "one shot" mode, the original file permissions will be restored once the upgrade is completed.
 
-Be aware that we use the environment variables from the official Postgres image. Ensure you set `PGDATA` to the Bitnami folder (by default `/bitnami/postgresql`) and `POSTGRES_PASSWORD` to the password of your Postgres user.
+Be aware that we use the environment variables from the official Postgres image. Ensure you set `PGDATA` to the Bitnami folder (by default `/bitnami/postgresql/data`) and `POSTGRES_PASSWORD` to the password of your Postgres user.
 
 The container has to run as `root` if using `one shot` mode, otherwise we are unable to restore the existing file permissions of your Postgres data directory. You can run the container as user `999`, but then you will have to manually apply the file permissions to your Postgres data directory.
 
