@@ -112,6 +112,32 @@ The container has to run as `root` if using `one shot` mode, otherwise we are un
 > [!WARNING]
 > As of writing this paragraph (14th of November, 2024), we only tested upgrading from Bitnami Postgres v13, v14, v15, v16 to v17. For these versions, we used the latest available container version. Bitnami's script and directory structure could change over time. If you note any issues upgrading from other versions, please provide the exact SHA of the image so we can try to replicate the issue.
 
+### One-shot mode in Kubernetes
+
+You can run `pgautoupgrade` as an `initContainer` in Kubernetes to enable one-shot mode. Below you can find an example for an upgrade for a Bitnami Postgres container.
+
+```yaml
+initContainers:
+- env:
+	- name: PGAUTO_ONESHOT
+	  value: "yes"
+	- name: POSTGRES_DB
+	  value: XXX
+	- name: PGDATA
+	  value: /bitnami/postgresql/data
+	- name: POSTGRES_PASSWORD
+	  value: password
+image: pgautoupgrade/pgautoupgrade:17-bookworm
+name: upgrade-postgres
+securityContext:
+	runAsUser: 0
+volumeMounts:
+	- mountPath: /bitnami/postgresql
+	  name: YYY
+```
+
+The value for `POSTGRES_PASSWORD` does not really matter, as it's never used in one-shot mode.
+
 # For Developers
 
 ## Building the image
