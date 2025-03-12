@@ -38,7 +38,6 @@ WORKDIR ${BUILD_ROOT}
 # We might want to install "alpine-sdk" instead of "build-base", if build-base
 # doesn't have everything we need
 RUN apk update && \
-  apk upgrade && \
   apk add --update build-base icu-data-full icu-dev linux-headers lz4-dev musl musl-locales musl-utils tzdata zlib-dev zstd-dev && \
   apk cache clean
 
@@ -150,6 +149,12 @@ RUN cd postgresql-16.* && \
 # Use the PostgreSQL Alpine image as our output image base
 FROM postgres:${PGTARGET}-alpine${ALPINE_VERSION}
 
+# Copy default configuration in case the original container does not provide it (Bitnami ...)
+RUN mkdir -p /opt/pgautoupgrade && \
+  chmod 660 /opt/pgautoupgrade && \
+  chown 999:999 /opt/pgautoupgrade
+COPY --chown=999 postgresql.conf pg_hba.conf /opt/pgautoupgrade/
+
 # We need to define this here, to make the above PGTARGET available after the FROM
 ARG PGTARGET
 
@@ -182,12 +187,11 @@ RUN apk update && \
 # Pass the PG build target through to the running image
 ENV PGTARGET=${PGTARGET}
 
-# Copy across the post-upgrade shell script
-COPY pgautoupgrade-postupgrade.sh pgautoupgrade-healthcheck.sh /usr/local/bin/
+# Copy across all our shell scripts
+COPY pgautoupgrade-postupgrade.sh pgautoupgrade-healthcheck.sh postgres-docker-entrypoint.sh docker-entrypoint.sh /usr/local/bin/
 
 # Set up the script run by the container when it starts
 WORKDIR /var/lib/postgresql
-COPY docker-entrypoint.sh /usr/local/bin/
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 HEALTHCHECK CMD /usr/local/bin/pgautoupgrade-healthcheck.sh
