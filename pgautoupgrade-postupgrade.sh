@@ -3,7 +3,7 @@
 set -e
 
 if [ $# -ne 3 ]; then
-	echo "Required number of arguments not passed to post upgrade script.  3 expected, $# received"
+	echo "Required number of arguments not passed to post upgrade script. 3 expected, $# received"
 	exit 1
 fi
 
@@ -75,6 +75,7 @@ if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
 	echo "****************************************************************************************************"
 	echo "'One shot' automatic upgrade was requested, so exiting now that the post upgrade tasks have finished"
 	echo "****************************************************************************************************"
+
 	pg_ctl stop -D "${PGDATA}"
 else
 	echo "*************************************************************************************************"
