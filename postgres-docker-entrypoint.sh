@@ -601,9 +601,41 @@ _main() {
 
 			echo "***************************************************************************************"
 			echo "Automatic upgrade process finished upgrading the data format to PostgreSQL ${PGTARGET}."
-			echo "The database has not yet been reindexed nor updated the query planner stats.  Those    "
-			echo "will be done by a background task shortly.                                             "
+			echo "Updating query planner stats"
 			echo "***************************************************************************************"
+
+			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
+			docker_temp_server_start "$@"
+
+			DB_LIST=$(echo 'SELECT datname FROM pg_catalog.pg_database WHERE datistemplate IS FALSE' | psql --username="${POSTGRES_USER}" -1t --csv "${POSTGRES_DB}")
+			for DATABASE in ${DB_LIST}; do
+				echo "VACUUM (ANALYZE, VERBOSE, INDEX_CLEANUP FALSE)" | psql --username="${POSTGRES_USER}" -t --csv "${DATABASE}"
+			done
+
+			if [ "x${PGAUTO_REINDEX}" != "xno" ]; then
+				# Reindex the databases
+				echo "------------------------"
+				echo "Reindexing the databases"
+				echo "------------------------"
+
+				if [[ "$PGTARGET" -le 15 ]]; then
+					reindexdb --all --username="${POSTGRES_USER}"
+				else
+					reindexdb --all --concurrently --username="${POSTGRES_USER}"
+				fi
+				
+				echo "-------------------------------"
+				echo "End of reindexing the databases"
+				echo "-------------------------------"
+			fi
+
+			unset PGPASSWORD
+			docker_temp_server_stop
+
+			echo "*******************************************"
+			echo "Upgrade to PostgreSQL ${PGTARGET} complete."
+			echo "*******************************************"
+
 			remove_upgrade_lock_file
 		fi
 
@@ -621,27 +653,16 @@ _main() {
 			sleep 5
 		done
 	else
-		# If the upgrade process ran, then we need to launch the post-upgrade script in the background while PG runs
-		if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
-			/usr/local/bin/pgautoupgrade-postupgrade.sh "${PGDATA}" "${POSTGRES_DB}" "${PGAUTO_ONESHOT}" 2>&1 &
-			echo "****************************"
-			echo "Post upgrade script launched"
-			echo "****************************"
-
+		# If no upgrade was performed, then we start PostgreSQL as per normal as long as "one shot" mode wasn't requested
+		if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
+			echo "***********************************************************************************"
+			echo "'One shot' automatic upgrade was requested, so exiting as there is no upgrade to do"
+			echo "If you're seeing this message and expecting an upgrade to be happening, it probably"
+			echo "means the container is being started in a loop and a previous run already did it :)"
+			echo "***********************************************************************************"
+		else
 			# Start PostgreSQL
 			exec "$@"
-		else
-			# If no upgrade was performed, then we start PostgreSQL as per normal as long as "one shot" mode wasn't requested
-			if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
-				echo "***********************************************************************************"
-				echo "'One shot' automatic upgrade was requested, so exiting as there is no upgrade to do"
-				echo "If you're seeing this message and expecting an upgrade to be happening, it probably"
-				echo "means the container is being started in a loop and a previous run already did it :)"
-				echo "***********************************************************************************"
-			else
-				# Start PostgreSQL
-				exec "$@"
-			fi
 		fi
 	fi
 }

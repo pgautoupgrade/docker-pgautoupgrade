@@ -180,7 +180,7 @@ RUN apt update && \
 ENV PGTARGET=${PGTARGET}
 
 # Copy across all our shell scripts
-COPY pgautoupgrade-postupgrade.sh pgautoupgrade-healthcheck.sh postgres-docker-entrypoint.sh docker-entrypoint.sh /usr/local/bin/
+COPY pgautoupgrade-healthcheck.sh postgres-docker-entrypoint.sh docker-entrypoint.sh /usr/local/bin/
 
 # Set up the script run by the container when it starts
 WORKDIR /var/lib/postgresql
