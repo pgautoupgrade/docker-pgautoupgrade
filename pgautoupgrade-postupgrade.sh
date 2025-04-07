@@ -70,6 +70,40 @@ if [ "x${PGAUTO_REINDEX}" != "xno" ]; then
         echo "-------------------------------"
 fi
 
+# Update the extensions
+echo "-----------------------"
+echo "Updating the extensions"
+echo "-----------------------"
+
+# For each database, update its extensions
+for DATABASE in ${DB_LIST}; do
+	echo "-----------------------------------------"
+	echo "Starting extension update for ${DATABASE}"
+	echo "-----------------------------------------"
+
+	EXTENSION_LIST=$(echo 'SELECT name FROM pg_catalog.pg_available_extensions WHERE default_version <> installed_version' | psql -t --csv "${DATABASE}")
+
+	for EXTENSION in ${EXTENSION_LIST}; do
+		echo "-------------------------------"
+		echo "Updating extension ${EXTENSION}"
+		echo "-------------------------------"
+
+		echo 'ALTER EXTENSION foobar UPDATE' | psql -t --csv "${DATABASE}"
+
+		echo "----------------------------------------"
+		echo "Finished updating extension ${EXTENSION}"
+		echo "----------------------------------------"
+	done
+
+	echo "-----------------------------------------"
+	echo "Finished extension update for ${DATABASE}"
+	echo "-----------------------------------------"
+done
+
+echo "--------------------------------"
+echo "Finished updating the extensions"
+echo "--------------------------------"
+
 # If "one shot" mode was requested, then shut down PostgreSQL
 if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
 	echo "****************************************************************************************************"
