@@ -597,15 +597,27 @@ _main() {
 			echo "Removing left over database files is complete"
 			echo "---------------------------------------------"
 
-			UPGRADE_PERFORMED=1
-
 			echo "***************************************************************************************"
 			echo "Automatic upgrade process finished upgrading the data format to PostgreSQL ${PGTARGET}."
-			echo "Updating query planner stats"
 			echo "***************************************************************************************"
+
+			UPGRADE_PERFORMED=1
 
 			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
 			docker_temp_server_start "$@"
+
+			if [ -e "${PGDATA}/update_extensions.sql" ]; then
+				echo "*******************"
+				echo "Updating extensions"
+				echo "*******************"
+
+				cat "${PGDATA}/update_extensions.sql" | psql --username="${POSTGRES_USER}"
+				rm -rf "${PGDATA}/update_extensions.sql"
+			fi
+
+			echo "****************************"
+			echo "Updating query planner stats"
+			echo "****************************"
 
 			DB_LIST=$(echo 'SELECT datname FROM pg_catalog.pg_database WHERE datistemplate IS FALSE' | psql --username="${POSTGRES_USER}" -1t --csv "${POSTGRES_DB}")
 			for DATABASE in ${DB_LIST}; do
