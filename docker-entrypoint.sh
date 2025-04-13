@@ -5,12 +5,16 @@ set -Eeo pipefail
 EXISTING_PG_HBA_CONF=0
 EXISTING_PGDATA_PERMISSIONS=$(stat -c %a "$PGDATA")
 EXISTING_PGDATA_OWNER_GROUP=$(stat -c "%u:%g" "$PGDATA")
+
+POSTGRESQL_DATA_DIRECTORY_HAS_DATA=0
 EXISTING_POSTGRESQL_CONF=0
 
 # if a valid PGDATA exists, the database directory is likely already initialized
 # if coming from a Bitnami image, we need to inject a postgresql.conf and pg_hba.conf file
 # and if they requested "one shot" mode, we will remove it again so they can continue to use the Bitnami image
 if [ -f "$PGDATA/PG_VERSION" ]; then
+    POSTGRESQL_DATA_DIRECTORY_HAS_DATA=1
+
     if [ -f "${PGDATA}/postgresql.conf" ]; then
         EXISTING_POSTGRESQL_CONF=1
     else
@@ -32,7 +36,7 @@ fi
 
 /usr/local/bin/postgres-docker-entrypoint.sh "$@"
 
-if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
+if [[ "x${PGAUTO_ONESHOT}" = "xyes" && $POSTGRESQL_DATA_DIRECTORY_HAS_DATA=1 ]]; then
     if [ "$EXISTING_POSTGRESQL_CONF" = "0" ]; then
         echo "-------------------------------------------------------------------------------"
         echo "Removing postgresql.conf from ${PGDATA}, as it was not provided by the data directory before the upgrade."
