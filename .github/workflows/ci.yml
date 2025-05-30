@@ -83,7 +83,7 @@ jobs:
         operating_system:
           - flavor: "alpine"
             # renovate: datasource=docker depName=alpine versioning=docker
-            OS_VERSION: "3.21"
+            OS_VERSION: "3.22"
             alias: "alpine"
           - flavor: "bookworm"
             alias: "debian"
