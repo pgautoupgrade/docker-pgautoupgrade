@@ -512,6 +512,10 @@ _main() {
 			# Return the error handling back to automatically aborting on non-0 exit status
 			set -e
 
+			# Remove 'postgres' element from 'postgres --runtime-option vars'
+			# e.g. "postgres -c wal_level=logical" --> "-c wal_level=logical" 
+			local run_options=("${@:2}")
+
 			# If no initdb arguments were passed to us from the environment, then work out something valid ourselves
 			if [ "x${POSTGRES_INITDB_ARGS}" != "x" ]; then
 				echo "------------------------------------------------------------------------------"
@@ -530,18 +534,21 @@ _main() {
 				local CTYPE=unset
 				local ENCODING=unset
 
-				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'server_encoding = "' | cut -d '"' -f 2)
+				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'server_encoding = "' | cut -d '"' -f 2)
 
 				# LC_COLLATE and LC_TYPE have been removed with PG v16
 				# https://www.postgresql.org/docs/release/16.0/
 				if [ "${PGVER}" -lt 16 ]; then
-					COLLATE=$(echo 'SHOW LC_COLLATE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_collate = "' | cut -d '"' -f 2)
-					CTYPE=$(echo 'SHOW LC_CTYPE' | "${OLDPATH}/bin/postgres" --single -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_ctype = "' | cut -d '"' -f 2)
+					COLLATE=$(echo 'SHOW LC_COLLATE' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_collate = "' | cut -d '"' -f 2)
+					CTYPE=$(echo 'SHOW LC_CTYPE' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_ctype = "' | cut -d '"' -f 2)
 
 					POSTGRES_INITDB_ARGS="--locale=${COLLATE} --lc-collate=${COLLATE} --lc-ctype=${CTYPE} --encoding=${ENCODING}"
 				else
 					POSTGRES_INITDB_ARGS="--encoding=${ENCODING}"
 				fi
+
+				# Append additional runtime args passed directly into script
+				POSTGRES_INITDB_ARGS="${POSTGRES_INITDB_ARGS} ${run_options[*]}"
 
 				echo "---------------------------------------------------------------"
 				echo "The initdb arguments we determined are: ${POSTGRES_INITDB_ARGS}"
@@ -565,7 +572,11 @@ _main() {
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
 			bin_path=$(get_bin_path)
-			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B "${bin_path}" --socketdir="/var/run/postgresql"
+			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link \
+			  --old-datadir "${OLD}" --new-datadir "${NEW}" \
+			  --old-bindir "${OLDPATH}/bin" --new-bindir "${bin_path}" \
+			  --socketdir="/var/run/postgresql" \
+			  --old-options "${run_options[*]}" --new-options "${run_options[*]}"
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"
