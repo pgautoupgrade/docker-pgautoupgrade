@@ -283,7 +283,7 @@ docker_temp_server_stop() {
 initdb_locale() {
 	echo "Initialising PostgreSQL ${PGTARGET} data directory"
 	bin_path=$(get_bin_path)
-	${bin_path}/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} ${PGDATA}/new/
+	eval "${bin_path}/initdb --username=\"${POSTGRES_USER}\" --pwfile=<(printf \"%s\n\" \"${POSTGRES_PASSWORD}\") ${POSTGRES_INITDB_ARGS} ${PGDATA}/new/"
 }
 
 # check arguments for an option that would cause postgres to stop
@@ -565,7 +565,9 @@ _main() {
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
 			bin_path=$(get_bin_path)
+			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
 			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link -d "${OLD}" -D "${NEW}" -b "${OLDPATH}/bin" -B "${bin_path}" --socketdir="/var/run/postgresql"
+			unset PGPASSWORD
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"
@@ -635,7 +637,7 @@ _main() {
 				else
 					reindexdb --all --concurrently --username="${POSTGRES_USER}"
 				fi
-				
+
 				echo "-------------------------------"
 				echo "End of reindexing the databases"
 				echo "-------------------------------"
