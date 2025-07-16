@@ -1,18 +1,20 @@
+# pgautoupgrade
+
 This is a PostgreSQL Docker image to automatically upgrade
 your database.
 
 Its whole purpose in life is to automatically detect the
 version of PostgreSQL used in the existing PostgreSQL data
 directory, then automatically upgrade it (if needed) to the
-required version of PostgreSQL.
+required version of PostgreSQL using `pg_upgrade` with the `--link` option.
 
 After this, the PostgreSQL server starts and runs as per
-normal.
+normal. The old cluster data will be removed.
 
 The reason this Docker image is needed, is because the
 official Docker PostgreSQL image has no ability to handle
 version upgrades, which leaves people to figure it out
-manually (not great): https://github.com/docker-library/postgres/issues/37
+manually (not great): <https://github.com/docker-library/postgres/issues/37>
 
 > [!WARNING]
 > Backup your data!
@@ -29,7 +31,7 @@ manually (not great): https://github.com/docker-library/postgres/issues/37
 
 This image is on Docker Hub:
 
-https://hub.docker.com/r/pgautoupgrade/pgautoupgrade
+<https://hub.docker.com/r/pgautoupgrade/pgautoupgrade>
 
 To always use the latest version of PostgreSQL, use the tag
 `latest`:
@@ -38,15 +40,15 @@ To always use the latest version of PostgreSQL, use the tag
 
 Please note that our `latest` tag is based on Alpine Linux,
 whereas the `latest` tag used by the official Docker
-Postgres container is based on Debian.
+Postgres container is based on Debian (see also the section on [Debian vs Alpine based images](#debian-vs-alpine-based-images)).
 
 If you instead want to run a specific version of PostgreSQL
 then pick a matching tag on our Docker Hub. For example, to
-use PostgreSQL 17 you can use:
+use PostgreSQL 17 you can use the `17-alpine` tag:
 
     pgautoupgrade/pgautoupgrade:17-alpine
 
-> [!NOTE]  
+> [!NOTE]
 > The images available in Github Container Registry are for debugging
 > purposes only. They are built from specific code branches for easier
 > distribution and testing of fixes.
@@ -138,9 +140,9 @@ volumeMounts:
 
 The value for `POSTGRES_PASSWORD` does not really matter, as it's never used in one-shot mode.
 
-# For Developers
+## For Developers
 
-## Building the image
+### Building the image
 
 To build the development docker image, use:
 
@@ -152,7 +154,7 @@ This will take a few minutes to create the "pgautoupgrade:local"
 docker image, that you can use in your docker-compose.yml
 files.
 
-## Customising the image
+### Customising the image
 
 [Our wiki](https://github.com/pgautoupgrade/docker-pgautoupgrade/wiki)
 now includes instructions for customising the image to include
@@ -160,7 +162,7 @@ your own extensions:
 
 &nbsp; &nbsp; https://github.com/pgautoupgrade/docker-pgautoupgrade/wiki/Including-Extensions-(PostGIS)
 
-## Breakpoints in the image
+### Breakpoints in the image
 
 There are (at present) two predefined er... "breakpoints"
 in the image.  When you run the image with either
@@ -171,7 +173,7 @@ location.
 This way, you can `docker exec` into the running container to
 try things out, do development, testing, debugging, etc.
 
-### Before breakpoint
+#### Before breakpoint
 
 The `before` breakpoint stops just before the `pg_upgrade`
 part of the script runs, so you can try alternative things
@@ -181,7 +183,7 @@ instead.
 $ make before
 ```
 
-### Server breakpoint
+#### Server breakpoint
 
 The `server` breakpoint stops after the existing `pg_upgrade`
 script has run, but before the PostgreSQL server starts.  Useful
@@ -192,7 +194,7 @@ PostgreSQL acting on them.
 $ make server
 ```
 
-## Testing the image
+### Testing the image
 
 To run the tests, use:
 
