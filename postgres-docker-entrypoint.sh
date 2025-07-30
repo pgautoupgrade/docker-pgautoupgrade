@@ -572,11 +572,13 @@ _main() {
 			echo "Running pg_upgrade command, from $(pwd)"
 			echo "---------------------------------------"
 			bin_path=$(get_bin_path)
+			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
 			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link \
 			  --old-datadir "${OLD}" --new-datadir "${NEW}" \
 			  --old-bindir "${OLDPATH}/bin" --new-bindir "${bin_path}" \
 			  --socketdir="/var/run/postgresql" \
 			  --old-options "${run_options[*]}" --new-options "${run_options[*]}"
+			unset PGPASSWORD
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"
