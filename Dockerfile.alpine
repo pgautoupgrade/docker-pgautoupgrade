@@ -1,4 +1,5 @@
-ARG PGTARGET=17
+# renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
+ARG PGTARGET=17.5
 
 # renovate: datasource=docker depName=alpine versioning=loose
 ARG ALPINE_VERSION=3.22
@@ -170,11 +171,10 @@ COPY --from=build-15 /usr/local-pg15 /usr/local-pg15
 COPY --from=build-16 /usr/local-pg16 /usr/local-pg16
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
-RUN if [ "${PGTARGET}" -eq 12 ]; then rm -rf /usr/local-pg12 /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" -eq 13 ]; then rm -rf /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" -eq 14 ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" -eq 15 ]; then rm -rf /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" -eq 16 ]; then rm -rf /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" -eq "${PG13_VERSION}" ]; then rm -rf /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" -eq "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" -eq "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" -eq "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16; fi
 
 # Install locale
 RUN apk update && \

@@ -7,7 +7,8 @@ on:
     - cron: "0 0 * * 0"
 
 env:
-  LATEST_POSTGRES_VERSION: "17"
+  # renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
+  LATEST_POSTGRES_VERSION: "17.5"
 
 jobs:
   base-images:
@@ -50,7 +51,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: |
-            "PGTARGET=16"
+            "PGTARGET=${{ env.LATEST_POSTGRES_VERSION }}"
           target: "build-${{ matrix.pg_version }}"
           tags: "pgautoupgrade/pgautoupgrade:build-${{ matrix.pg_version }}-${{ matrix.flavor }}"
           cache-to: type=inline
@@ -74,9 +75,9 @@ jobs:
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-14-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-15-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-16-${{ matrix.operating_system.flavor }}
-        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}
-        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}
-        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.alias }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target.PG_VERSION }}-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target.PG_VERSION }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target.PG_VERSION }}-${{ matrix.operating_system.alias }}
 
     strategy:
       matrix:
@@ -88,11 +89,16 @@ jobs:
           - flavor: "bookworm"
             alias: "debian"
         pg_target:
-          - "13"
-          - "14"
-          - "15"
-          - "16"
-          - "17"
+          # renovate: datasource=repology depName=homebrew/postgresql@13 versioning=loose
+          - PG_VERSION: "13.21"
+          # renovate: datasource=repology depName=homebrew/postgresql@14 versioning=loose
+          - PG_VERSION: "14.18"
+          # renovate: datasource=repology depName=homebrew/postgresql@15 versioning=loose
+          - PG_VERSION: "15.13"
+          # renovate: datasource=repology depName=homebrew/postgresql@16 versioning=loose
+          - PG_VERSION: "16.9"
+          # renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
+          - PG_VERSION: "17.5"
 
     steps:
       - name: Set up QEMU
@@ -108,17 +114,32 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: pgautoupgrade/pgautoupgrade
+          flavor: |
+            latest=false
+          # add a .0 to each Postgres version so it is compliant with semantic version
+          # note that the .0 never ends up on an actual tag
+          tags: |
+            type=semver,pattern={{major}},value=${{ matrix.pg_target.PG_VERSION }}.0,suffix=-${{ matrix.operating_system.flavor }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.pg_target.PG_VERSION }}.0,suffix=-${{ matrix.operating_system.flavor }}
+            type=semver,pattern={{major}},value=${{ matrix.pg_target.PG_VERSION }}.0,suffix=-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.pg_target.PG_VERSION }}.0,suffix=-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}
+            type=semver,pattern={{major}},value=${{ matrix.pg_target.PG_VERSION }}.0,suffix=-${{ matrix.operating_system.alias }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ matrix.pg_target.PG_VERSION }}.0,suffix=-${{ matrix.operating_system.alias }}
+
       - name: Build image
         uses: docker/build-push-action@v6
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           load: true
-          tags: |
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}"
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}"
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.alias }}"
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            "PGTARGET=${{ matrix.pg_target }}"
+            "PGTARGET=${{ matrix.pg_target.PG_VERSION }}"
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
 
@@ -129,7 +150,7 @@ jobs:
         run: |
           make test
         env:
-          PGTARGET: ${{ matrix.pg_target }}
+          PGTARGET: ${{ matrix.pg_target.PG_VERSION }}
           OS_FLAVOR: ${{ matrix.operating_system.flavor }}
 
       # otherwise, we run into space problems
@@ -147,18 +168,16 @@ jobs:
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           platforms: linux/amd64,linux/arm64
-          tags: |
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}"
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}"
-            "pgautoupgrade/pgautoupgrade:${{ matrix.pg_target }}-${{ matrix.operating_system.alias }}"
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            "PGTARGET=${{ matrix.pg_target }}"
+            "PGTARGET=${{ matrix.pg_target.PG_VERSION }}"
           push: true
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
 
       - name: Push latest image for each supported OS
-        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == env.LATEST_POSTGRES_VERSION
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target.PG_VERSION == env.LATEST_POSTGRES_VERSION
         uses: docker/build-push-action@v6
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
@@ -167,13 +186,13 @@ jobs:
             "pgautoupgrade/pgautoupgrade:${{ matrix.operating_system.flavor }}"
             "pgautoupgrade/pgautoupgrade:${{ matrix.operating_system.alias }}"
           build-args: |
-            "PGTARGET=${{ matrix.pg_target }}"
+            "PGTARGET=${{ matrix.pg_target.PG_VERSION }}"
           push: true
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
 
       - name: Push general latest image
-        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target == env.LATEST_POSTGRES_VERSION && matrix.operating_system.flavor == 'alpine'
+        if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target.PG_VERSION == env.LATEST_POSTGRES_VERSION && matrix.operating_system.flavor == 'alpine'
         uses: docker/build-push-action@v6
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
@@ -181,7 +200,7 @@ jobs:
           tags: |
             "pgautoupgrade/pgautoupgrade:latest"
           build-args: |
-            "PGTARGET=${{ matrix.pg_target }}"
+            "PGTARGET=${{ matrix.pg_target.PG_VERSION }}"
           push: true
           cache-to: type=inline
           cache-from: "${{ env.CACHE_FROM }}"
