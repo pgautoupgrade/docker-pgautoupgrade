@@ -64,7 +64,7 @@ test_run() {
 
     # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat postgres-data/PG_VERSION)
-    if [ "$PGVER" != "${TARGET}" ]; then
+    if [ "$PGVER" != "${TARGET%%.*}" ]; then
         banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
         FAILURE=1
     else
@@ -92,7 +92,7 @@ test_run() {
 
     # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat postgres-data/PG_VERSION)
-    if [ "$PGVER" != "${TARGET}" ]; then
+    if [ "$PGVER" != "${TARGET%%.*}" ]; then
         banner '*' "'One shot' automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
         FAILURE=1
     else
