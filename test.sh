@@ -64,7 +64,7 @@ test_run() {
 
     # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat postgres-data/PG_VERSION)
-    if [ "$PGVER" != "${TARGET}" ]; then
+    if [ "$PGVER" != "${TARGET%%.*}" ]; then
         banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
         FAILURE=1
     else
@@ -92,7 +92,7 @@ test_run() {
 
     # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat postgres-data/PG_VERSION)
-    if [ "$PGVER" != "${TARGET}" ]; then
+    if [ "$PGVER" != "${TARGET%%.*}" ]; then
         banner '*' "'One shot' automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
         FAILURE=1
     else
@@ -128,7 +128,7 @@ tar -xf AdventureWorks.tar.xz
 
 for version in "${PG_VERSIONS[@]}"; do
     # Only test if the version is less than the latest version
-    if [[ $(echo "$version < $PGTARGET" | bc) -eq 1 ]]; then
+    if [[ $(echo "$version < ${PGTARGET%%.*}" | bc) -eq 1 ]]; then
         test_run "$version" "$PGTARGET" "$OS_FLAVOR"
     fi
 done

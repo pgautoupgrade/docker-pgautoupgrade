@@ -307,7 +307,7 @@ get_bin_path() {
   if [ -f /etc/alpine-release ]; then
     echo "/usr/local/bin"
   else
-    echo "/usr/lib/postgresql/${PGTARGET}/bin"
+    echo "/usr/lib/postgresql/${PGTARGET%%.*}/bin"
   fi
 }
 
@@ -390,13 +390,15 @@ _main() {
 		echo "************************************"
 
 		# Get the version of the PostgreSQL data files
-		local PGVER=${PGTARGET}
+		local PGVER=${PGTARGET%%.*}
+		local PGTARGET_MAJOR=${PGTARGET%%.*}
+
 		if [ -s "${PGDATA}/PG_VERSION" ]; then
 			PGVER=$(cat "${PGDATA}/PG_VERSION")
 		fi
 
 		# If the version of PostgreSQL data files doesn't match our desired version, then upgrade them
-		if [ "${PGVER}" != "${PGTARGET}" ]; then
+		if [ "${PGVER}" != "${PGTARGET_MAJOR}" ]; then
 			create_upgrade_lock_file
 			# Ensure the database files are a version we can upgrade
 			local RECOGNISED=0
@@ -404,16 +406,16 @@ _main() {
 			if [ "${PGVER}" = "9.5" ] || [ "${PGVER}" = "9.6" ] || [ "${PGVER}" = "10" ] || [ "${PGVER}" = "11" ] || [ "${PGVER}" = "12" ]; then
 				RECOGNISED=1
 			fi
-			if [ "${PGTARGET}" -gt 13 ] && [ "${PGVER}" = "13" ]; then
+			if [ "${PGTARGET_MAJOR}" -gt 13 ] && [ "${PGVER}" = "13" ]; then
 				RECOGNISED=1
 			fi
-			if [ "${PGTARGET}" -gt 14 ] && [ "${PGVER}" = "14" ]; then
+			if [ "${PGTARGET_MAJOR}" -gt 14 ] && [ "${PGVER}" = "14" ]; then
 				RECOGNISED=1
 			fi
-			if [ "${PGTARGET}" -gt 15 ] && [ "${PGVER}" = "15" ]; then
+			if [ "${PGTARGET_MAJOR}" -gt 15 ] && [ "${PGVER}" = "15" ]; then
 				RECOGNISED=1
 			fi
-			if [ "${PGTARGET}" -gt 16 ] && [ "${PGVER}" = "16" ]; then
+			if [ "${PGTARGET_MAJOR}" -gt 16 ] && [ "${PGVER}" = "16" ]; then
 				RECOGNISED=1
 			fi
 			if [ "${RECOGNISED}" -eq 1 ]; then
@@ -641,7 +643,7 @@ _main() {
 				echo "Reindexing the databases"
 				echo "------------------------"
 
-				if [[ "$PGTARGET" -le 15 ]]; then
+				if [[ "$PGTARGET_MAJOR" -le 15 ]]; then
 					reindexdb --all --username="${POSTGRES_USER}"
 				else
 					reindexdb --all --concurrently --username="${POSTGRES_USER}"
