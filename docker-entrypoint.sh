@@ -36,7 +36,7 @@ fi
 
 /usr/local/bin/postgres-docker-entrypoint.sh "$@"
 
-if [[ "x${PGAUTO_ONESHOT}" = "xyes" && $POSTGRESQL_DATA_DIRECTORY_HAS_DATA=1 ]]; then
+if [[ "x${PGAUTO_ONESHOT}" = "xyes" && $POSTGRESQL_DATA_DIRECTORY_HAS_DATA = 1 ]]; then
     if [ "$EXISTING_POSTGRESQL_CONF" = "0" ]; then
         echo "-------------------------------------------------------------------------------"
         echo "Removing postgresql.conf from ${PGDATA}, as it was not provided by the data directory before the upgrade."
