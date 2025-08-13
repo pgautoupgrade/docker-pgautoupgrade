@@ -166,10 +166,10 @@ COPY --from=build-15 /usr/local-pg15 /usr/local-pg15
 COPY --from=build-16 /usr/local-pg16 /usr/local-pg16
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
-RUN if [ "${PGTARGET}" -eq "${PG13_VERSION}" ]; then rm -rf /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" -eq "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" -eq "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" -eq "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" == "${PG13_VERSION}" ]; then rm -rf /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" == "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" == "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" == "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16; fi
 
 # Install locale
 RUN apt update && \
