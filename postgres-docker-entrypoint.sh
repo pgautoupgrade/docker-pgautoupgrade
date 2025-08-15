@@ -680,13 +680,19 @@ _main() {
 			sleep 5
 		done
 	else
-		# If no upgrade was performed, then we start PostgreSQL as per normal as long as "one shot" mode wasn't requested
+		# If no upgrade was performed or the upgrade has finished, then we start PostgreSQL as per normal as long as "one shot" mode wasn't requested
 		if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
-			echo "***********************************************************************************"
-			echo "'One shot' automatic upgrade was requested, so exiting as there is no upgrade to do"
-			echo "If you're seeing this message and expecting an upgrade to be happening, it probably"
-			echo "means the container is being started in a loop and a previous run already did it :)"
-			echo "***********************************************************************************"
+			if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
+				echo "**********************************************************************************"
+				echo "'One shot' automatic upgrade was requested, so exiting as the upgrade has finished"
+				echo "**********************************************************************************"
+			else
+				echo "***********************************************************************************"
+				echo "'One shot' automatic upgrade was requested, so exiting as there is no upgrade to do"
+				echo "If you're seeing this message and expecting an upgrade to be happening, it probably"
+				echo "means the container is being started in a loop and a previous run already did it :)"
+				echo "***********************************************************************************"
+			fi
 		else
 			# Start PostgreSQL
 			exec "$@"
