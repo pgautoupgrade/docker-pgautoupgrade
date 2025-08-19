@@ -399,7 +399,6 @@ _main() {
 
 		# If the version of PostgreSQL data files doesn't match our desired version, then upgrade them
 		if [ "${PGVER}" != "${PGTARGET_MAJOR}" ]; then
-			create_upgrade_lock_file
 			# Ensure the database files are a version we can upgrade
 			local RECOGNISED=0
 			local OLDPATH=unset
@@ -458,6 +457,8 @@ _main() {
 				echo "*******************************************************************************************"
 				exec gosu postgres "$BASH_SOURCE" "$@"
 			fi
+
+			create_upgrade_lock_file
 
 			# Don't automatically abort on non-0 exit status, as that messes with these upcoming mv commands
 			set +e
