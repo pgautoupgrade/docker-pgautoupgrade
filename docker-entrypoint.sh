@@ -34,7 +34,21 @@ if [ -f "$PGDATA/PG_VERSION" ]; then
     fi
 fi
 
-/usr/local/bin/postgres-docker-entrypoint.sh "$@"
+/usr/local/bin/postgres-docker-entrypoint.sh "$@" &
+pid="$!"
+
+# forward signals
+forward_signal() {
+  kill -s "$1" "$pid"
+}
+trap 'forward_signal TERM' TERM
+trap 'forward_signal INT' INT
+trap 'forward_signal HUP' HUP
+trap 'forward_signal QUIT' QUIT
+
+# wait for the child process to exit
+wait "$pid"
+exit_code=$?
 
 if [[ "x${PGAUTO_ONESHOT}" = "xyes" && $POSTGRESQL_DATA_DIRECTORY_HAS_DATA = 1 ]]; then
     if [ "$EXISTING_POSTGRESQL_CONF" = "0" ]; then
@@ -60,3 +74,5 @@ fi
 
 # Run a sync before exiting, just to ensure everything is flushed to disk before docker terminates the process
 sync
+
+exit "$exit_code"
