@@ -60,12 +60,12 @@ based, and upgrading from that to one of our Alpine Linux
 based images doesn't always work out well.
 
 To solve that problem, we have Debian based images
-(`17-bookworm` and `16-bookworm`) available now as well.
+(`17-trixie` and `16-trixie`) available as well.
 
 To use either of those, choose the version of PostgreSQL you'd
 like to upgrade to, then change your docker image to match:
 
-    pgautoupgrade/pgautoupgrade:17-bookworm
+    pgautoupgrade/pgautoupgrade:17-trixie
 
 ### "One shot" mode
 
@@ -121,21 +121,21 @@ You can run `pgautoupgrade` as an `initContainer` in Kubernetes to enable one-sh
 ```yaml
 initContainers:
 - env:
-	- name: PGAUTO_ONESHOT
-	  value: "yes"
-	- name: POSTGRES_DB
-	  value: XXX
-	- name: PGDATA
-	  value: /bitnami/postgresql/data
-	- name: POSTGRES_PASSWORD
-	  value: password
-image: pgautoupgrade/pgautoupgrade:17-bookworm
+  - name: PGAUTO_ONESHOT
+    value: "yes"
+  - name: POSTGRES_DB
+    value: XXX
+  - name: PGDATA
+    value: /bitnami/postgresql/data
+  - name: POSTGRES_PASSWORD
+    value: password
+image: pgautoupgrade/pgautoupgrade:17-trixie
 name: upgrade-postgres
 securityContext:
-	runAsUser: 0
+  runAsUser: 0
 volumeMounts:
-	- mountPath: /bitnami/postgresql
-	  name: YYY
+  - mountPath: /bitnami/postgresql
+    name: YYY
 ```
 
 The value for `POSTGRES_PASSWORD` does not really matter, as it's never used in one-shot mode.
