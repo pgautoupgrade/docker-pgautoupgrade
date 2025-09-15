@@ -2,7 +2,7 @@
 ARG PGTARGET=17.5
 
 ### Things we need in all build containers
-FROM debian:bookworm AS base-build
+FROM debian:trixie AS base-build
 
 # The versions of PostgreSQL to use
 ENV PG95=9.5.25
@@ -142,8 +142,8 @@ RUN cd postgresql-16.* && \
   make install-world && \
   rm -rf /usr/local-pg16/include
 
-# Use the PostgreSQL Bookworm image as our output image base
-FROM postgres:${PGTARGET}-bookworm
+# Use the PostgreSQL Trixie image as our output image base
+FROM postgres:${PGTARGET}-trixie
 
 # Copy default configuration in case the original container does not provide it (Bitnami ...)
 RUN mkdir -p /opt/pgautoupgrade && \

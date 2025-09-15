@@ -21,7 +21,7 @@ jobs:
                 include:
                     - flavor: "alpine"
                       alias: "alpine"
-                    - flavor: "bookworm"
+                    - flavor: "trixie"
                       alias: "debian"
 
         steps:

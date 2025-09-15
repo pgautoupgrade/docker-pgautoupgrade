@@ -19,7 +19,7 @@ jobs:
       matrix:
         flavor:
           - alpine
-          - bookworm
+          - trixie
         pg_version:
           - "9.5"
           - "9.6"
@@ -86,7 +86,7 @@ jobs:
             # renovate: datasource=docker depName=alpine versioning=docker
             OS_VERSION: "3.22"
             alias: "alpine"
-          - flavor: "bookworm"
+          - flavor: "trixie"
             alias: "debian"
         pg_target:
           - # renovate: datasource=repology depName=homebrew/postgresql@13 versioning=loose
