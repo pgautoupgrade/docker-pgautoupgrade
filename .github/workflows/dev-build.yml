@@ -84,5 +84,6 @@ jobs:
                     type=registry,ref=pgautoupgrade/pgautoupgrade:build-14-${{ matrix.flavor }}
                     type=registry,ref=pgautoupgrade/pgautoupgrade:build-15-${{ matrix.flavor }}
                     type=registry,ref=pgautoupgrade/pgautoupgrade:build-16-${{ matrix.flavor }}
+                    type=registry,ref=pgautoupgrade/pgautoupgrade:build-17-${{ matrix.flavor }}
                     type=registry,ref=ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.BRANCH_NAME }}-${{ matrix.alias }}
                     type=registry,ref=ghcr.io/pgautoupgrade/pgautoupgrade:${{ env.HEAD_SHA }}-${{ matrix.alias }}

@@ -4,7 +4,7 @@ set -eux
 FAILURE=0
 
 # Array of PostgreSQL versions for testing
-PG_VERSIONS=(9.5 9.6 10 11 12 13 14 15 16 17)
+PG_VERSIONS=(9.5 9.6 10 11 12 13 14 15 16 17 18)
 
 # Useful output display
 banner() {
