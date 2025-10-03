@@ -3,17 +3,17 @@ set -Eeo pipefail
 # TODO swap to -Eeuo pipefail above (after handling all potentially-unset variables)
 
 EXISTING_PG_HBA_CONF=0
-EXISTING_PGDATA_PERMISSIONS=$(stat -c %a "$PGDATA")
-EXISTING_PGDATA_OWNER_GROUP=$(stat -c "%u:%g" "$PGDATA")
-
-POSTGRESQL_DATA_DIRECTORY_HAS_DATA=0
 EXISTING_POSTGRESQL_CONF=0
+POSTGRESQL_DATA_DIRECTORY_HAS_DATA=0
 
 # if a valid PGDATA exists, the database directory is likely already initialized
 # if coming from a Bitnami image, we need to inject a postgresql.conf and pg_hba.conf file
 # and if they requested "one shot" mode, we will remove it again so they can continue to use the Bitnami image
-if [ -f "$PGDATA/PG_VERSION" ]; then
+if [ -d "$PGDATA" ] && [ -f "$PGDATA/PG_VERSION" ]; then
     POSTGRESQL_DATA_DIRECTORY_HAS_DATA=1
+
+    EXISTING_PGDATA_PERMISSIONS=$(stat -c %a "$PGDATA")
+    EXISTING_PGDATA_OWNER_GROUP=$(stat -c "%u:%g" "$PGDATA")
 
     if [ -f "${PGDATA}/postgresql.conf" ]; then
         EXISTING_POSTGRESQL_CONF=1

@@ -42,6 +42,15 @@ test_run() {
     TARGET=$2
     FLAVOR=$3
 
+    local TARGET_MAJOR=${PGTARGET%%.*}
+    if [ "$TARGET_MAJOR" -eq 18 ]; then
+        PGAUTO_COMPOSE="docker-compose-pgauto18.yml"
+        PGVERSION_FILE="postgres-data/18/docker/PG_VERSION"
+    else
+        PGAUTO_COMPOSE="docker-compose-pgauto.yml"
+        PGVERSION_FILE="postgres-data/PG_VERSION"
+    fi
+
     # Delete any existing test PostgreSQL data
     if [ -d postgres-data ]; then
         echo "Removing old PostgreSQL data from test directory"
@@ -49,10 +58,10 @@ test_run() {
     fi
 
     # Start an empty pgautoupgrade container to make sure this is possible as well
-    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f docker-compose-pgauto.yml up --wait -d
+    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f $PGAUTO_COMPOSE up --wait -d
 
     # Shut down any containers that are still running
-    docker compose -f docker-compose-pgauto.yml down --remove-orphans
+    docker compose -f $PGAUTO_COMPOSE down --remove-orphans
 
     # Delete the upgraded PostgreSQL data directory
     sudo rm -rf postgres-data
@@ -60,10 +69,10 @@ test_run() {
     import_adventure_works
 
     # Start pgautoupgrade container
-    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f docker-compose-pgauto.yml up --wait -d
+    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f $PGAUTO_COMPOSE up --wait -d
 
     # Verify the PostgreSQL data files are now the target version
-    PGVER=$(sudo cat postgres-data/PG_VERSION)
+    PGVER=$(sudo cat $PGVERSION_FILE)
     if [ "$PGVER" != "${TARGET%%.*}" ]; then
         banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
         FAILURE=1
@@ -88,10 +97,10 @@ test_run() {
     docker compose -f "docker-compose-pg${VERSION}.yml" down --remove-orphans
 
     # Run the PostgreSQL container in one shot mode
-    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f docker-compose-pgauto.yml run --rm -e PGAUTO_ONESHOT=yes postgres
+    TARGET_TAG="${TARGET}-${FLAVOR}" docker compose -f $PGAUTO_COMPOSE run --rm -e PGAUTO_ONESHOT=yes postgres
 
     # Verify the PostgreSQL data files are now the target version
-    PGVER=$(sudo cat postgres-data/PG_VERSION)
+    PGVER=$(sudo cat $PGVERSION_FILE)
     if [ "$PGVER" != "${TARGET%%.*}" ]; then
         banner '*' "'One shot' automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
         FAILURE=1
@@ -100,7 +109,7 @@ test_run() {
     fi
 
     # Shut down any containers that are still running
-    docker compose -f docker-compose-pgauto.yml down
+    docker compose -f $PGAUTO_COMPOSE down
 
     # If running on CI, delete the Postgres Docker image to avoid space problems
     if [ -n "$CI" ]; then
