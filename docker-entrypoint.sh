@@ -6,6 +6,23 @@ EXISTING_PG_HBA_CONF=0
 EXISTING_POSTGRESQL_CONF=0
 POSTGRESQL_DATA_DIRECTORY_HAS_DATA=0
 
+if [ -d "/bitnami/postgresql" ]; then
+    # we deal with the standard Bitnami environment
+    # overwrite PGDATA to point to the data directory
+    export PGDATA="/bitnami/postgresql/data"
+elif [ -n "$POSTGRESQL_DATA_DIR" ]; then
+    # this is the Bitnami environment to customize the Postgres data directory
+    export PGDATA=$POSTGRESQL_DATA_DIR
+elif [ -n "$POSTGRESQL_VOLUME_DIR" ]; then
+    # this is the Bitnami environment to customize the Postgres persistence directory
+    # data is a subfolder of that
+    export PGDATA="${POSTGRESQL_VOLUME_DIR}/data"
+fi
+
+if [ -n $POSTGRESQL_PASSWORD ] && [ -z $POSTGRES_PASSWORD ]; then
+    export POSTGRES_PASSWORD=$POSTGRESQL_PASSWORD
+fi
+
 # if a valid PGDATA exists, the database directory is likely already initialized
 # if coming from a Bitnami image, we need to inject a postgresql.conf and pg_hba.conf file
 # and if they requested "one shot" mode, we will remove it again so they can continue to use the Bitnami image
