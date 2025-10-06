@@ -58,7 +58,12 @@ docker_create_db_directories() {
 
 	# allow the container to be started with `--user`
 	if [ "$user" = '0' ]; then
-		find "$PGDATA" \! -user postgres -exec chown postgres '{}' +
+		if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+			find "/var/lib/postgresql" \! -user postgres -exec chown postgres '{}' +
+		else
+			find "$PGDATA" \! -user postgres -exec chown postgres '{}' +
+		fi
+
 		find /var/run/postgresql \! -user postgres -exec chown postgres '{}' +
 	fi
 }
@@ -106,20 +111,24 @@ docker_init_database_dir() {
 # print large warning if POSTGRES_HOST_AUTH_METHOD is set to 'trust'
 # assumes database is not set up, ie: [ -z "$DATABASE_ALREADY_EXISTS" ]
 docker_verify_minimum_env() {
-	# check password first so we can output the warning before postgres
-	# messes it up
-	if [ "${#POSTGRES_PASSWORD}" -ge 100 ]; then
-		cat >&2 <<-'EOWARN'
+	case "${PG_MAJOR:-}" in
+		13) # https://github.com/postgres/postgres/commit/67a472d71c98c3d2fa322a1b4013080b20720b98
+			# check password first so we can output the warning before postgres
+			# messes it up
+			if [ "${#POSTGRES_PASSWORD}" -ge 100 ]; then
+				cat >&2 <<-'EOWARN'
 
-			WARNING: The supplied POSTGRES_PASSWORD is 100+ characters.
+					WARNING: The supplied POSTGRES_PASSWORD is 100+ characters.
 
-			  This will not work if used via PGPASSWORD with "psql".
+					  This will not work if used via PGPASSWORD with "psql".
 
-			  https://www.postgresql.org/message-id/flat/E1Rqxp2-0004Qt-PL%40wrigleys.postgresql.org (BUG #6412)
-			  https://github.com/docker-library/postgres/issues/507
+					  https://www.postgresql.org/message-id/flat/E1Rqxp2-0004Qt-PL%40wrigleys.postgresql.org (BUG #6412)
+					  https://github.com/docker-library/postgres/issues/507
 
-		EOWARN
-	fi
+				EOWARN
+			fi
+			;;
+	esac
 	if [ -z "$POSTGRES_PASSWORD" ] && [ 'trust' != "$POSTGRES_HOST_AUTH_METHOD" ]; then
 		# The - option suppresses leading tabs but *not* spaces. :)
 		cat >&2 <<-'EOE'
@@ -250,7 +259,7 @@ pg_setup_hba_conf() {
 		printf '\n'
 		if [ 'trust' = "$POSTGRES_HOST_AUTH_METHOD" ]; then
 			printf '# warning trust is enabled for all connections\n'
-			printf '# see https://www.postgresql.org/docs/12/auth-trust.html\n'
+			printf '# see https://www.postgresql.org/docs/17/auth-trust.html\n'
 		fi
 		printf 'host all all all %s\n' "$POSTGRES_HOST_AUTH_METHOD"
 	} >> "$PGDATA/pg_hba.conf"
@@ -267,6 +276,9 @@ docker_temp_server_start() {
 	# does not listen on external TCP/IP and waits until start finishes
 	set -- "$@" -c listen_addresses='' -p "${PGPORT:-5432}"
 
+	# unset NOTIFY_SOCKET so the temporary server doesn't prematurely notify
+	# any process supervisor.
+	NOTIFY_SOCKET= \
 	PGUSER="${PGUSER:-$POSTGRES_USER}" \
 	pg_ctl -D "$PGDATA" \
 		-o "$(printf '%q ' "$@")" \
@@ -283,7 +295,7 @@ docker_temp_server_stop() {
 initdb_locale() {
 	echo "Initialising PostgreSQL ${PGTARGET} data directory"
 	bin_path=$(get_bin_path)
-	${bin_path}/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} ${PGDATA}/new/
+	${bin_path}/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} ${NEW}
 }
 
 # check arguments for an option that would cause postgres to stop
@@ -331,9 +343,17 @@ _main() {
 
 	if [ "$1" = 'postgres' ] && ! _pg_want_help "$@"; then
 		docker_setup_env
+
+		PGTARGET_MAJOR=${PGTARGET%%.*}
+		MOVING_TO_NEW_STRUCTURE=0
+		if [ -s "/var/lib/postgresql/PG_VERSION" ] && [ "$PGTARGET_MAJOR" -eq 18 ] && [ "$PGDATA" == "/var/lib/postgresql/18/docker" ]; then
+			MOVING_TO_NEW_STRUCTURE=1
+		fi
+
 		# setup data directories and permissions (when run as root)
 		docker_create_db_directories
 		if [ "$(id -u)" = '0' ]; then
+			# then restart script as postgres user
 			exec gosu postgres "$BASH_SOURCE" "$@"
 		fi
 
@@ -391,9 +411,10 @@ _main() {
 
 		# Get the version of the PostgreSQL data files
 		local PGVER=${PGTARGET%%.*}
-		local PGTARGET_MAJOR=${PGTARGET%%.*}
 
-		if [ -s "${PGDATA}/PG_VERSION" ]; then
+		if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+			PGVER=$(cat "/var/lib/postgresql/PG_VERSION")
+		elif [ -s "${PGDATA}/PG_VERSION" ]; then
 			PGVER=$(cat "${PGDATA}/PG_VERSION")
 		fi
 
@@ -417,6 +438,9 @@ _main() {
 			if [ "${PGTARGET_MAJOR}" -gt 16 ] && [ "${PGVER}" = "16" ]; then
 				RECOGNISED=1
 			fi
+			if [ "${PGTARGET_MAJOR}" -gt 17 ] && [ "${PGVER}" = "17" ]; then
+				RECOGNISED=1
+			fi
 			if [ "${RECOGNISED}" -eq 1 ]; then
 				OLDPATH="/usr/local-pg${PGVER}"
 				echo "*******************************************************************************************"
@@ -434,7 +458,8 @@ _main() {
 			echo "Checking for left over artifacts from a failed previous autoupgrade..."
 			echo "----------------------------------------------------------------------"
 			local OLD="${PGDATA}/old"
-			local NEW="${PGDATA}/new"
+			NEW="${PGDATA}/new"
+
 			if [ -d "${OLD}" ]; then
 				echo "*****************************************"
 				echo "Left over OLD directory found.  Aborting."
@@ -481,7 +506,11 @@ _main() {
 			echo "-------------------------------------------------------"
 			echo "Moving existing data files into OLD temporary directory"
 			echo "-------------------------------------------------------"
-			mv -v "${PGDATA}"/* "${OLD}"
+			if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
+				mv -v "${PGDATA}"/* "${OLD}"
+			else
+				find /var/lib/postgresql -mindepth 1 -maxdepth 1 ! -name 18 -exec mv {} /var/lib/postgresql/18/docker/old/ \;
+			fi
 			echo "-------------------------------------------------------------------"
 			echo "Moving existing data files into OLD temporary directory is complete"
 			echo "-------------------------------------------------------------------"
@@ -496,7 +525,11 @@ _main() {
 				echo "********************************************************************"
 				# With a failure at this point we should be able to move the old data back
 				# to its original location
-				mv -v "${OLD}"/* "${PGDATA}"
+				if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
+					mv -v "${OLD}"/* "${PGDATA}"
+				else
+					mv -v "${OLD}"/* "/var/lib/postgresql"
+				fi
 				rmdir old
 				exit 8
 			fi
@@ -535,19 +568,29 @@ _main() {
 				echo "------------------------------------"
 				local COLLATE=unset
 				local CTYPE=unset
+				local DATA_CHECKSUMS_ENABLED
+				local DATA_CHECKSUMS_PARAMETER
 				local ENCODING=unset
-
+				
+				DATA_CHECKSUMS_ENABLED=$(echo 'SHOW DATA_CHECKSUMS' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'data_checksums = "' | cut -d '"' -f 2)
 				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'server_encoding = "' | cut -d '"' -f 2)
+
+				if [ "$DATA_CHECKSUMS_ENABLED" == "on" ]; then
+					DATA_CHECKSUMS_PARAMETER="--data-checksums"
+				elif [ "$PGTARGET_MAJOR" -eq 18 ]; then
+					# Postgres v18 enables data checksums by default and is the only version with this opt-out parameter
+					DATA_CHECKSUMS_PARAMETER="--no-data-checksums"
+				fi
 
 				# LC_COLLATE and LC_TYPE have been removed with PG v16
 				# https://www.postgresql.org/docs/release/16.0/
-				if [ "${PGVER}" -lt 16 ]; then
+				if [ "$PGTARGET_MAJOR" -lt 16 ]; then
 					COLLATE=$(echo 'SHOW LC_COLLATE' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_collate = "' | cut -d '"' -f 2)
 					CTYPE=$(echo 'SHOW LC_CTYPE' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_ctype = "' | cut -d '"' -f 2)
 
-					POSTGRES_INITDB_ARGS="--locale=${COLLATE} --lc-collate=${COLLATE} --lc-ctype=${CTYPE} --encoding=${ENCODING}"
+					POSTGRES_INITDB_ARGS="--locale=${COLLATE} --lc-collate=${COLLATE} --lc-ctype=${CTYPE} --encoding=${ENCODING} ${DATA_CHECKSUMS_PARAMETER}"
 				else
-					POSTGRES_INITDB_ARGS="--encoding=${ENCODING}"
+					POSTGRES_INITDB_ARGS="--encoding=${ENCODING} ${DATA_CHECKSUMS_PARAMETER}"
 				fi
 
 				# Append additional runtime args passed directly into script
@@ -588,9 +631,9 @@ _main() {
 
 			# Move the new database files into place
 			echo "-----------------------------------------------------"
-			echo "Moving the new database files to the active directory"
+			echo "Copying the new database files to the active directory"
 			echo "-----------------------------------------------------"
-			mv -v "${NEW}"/* "${PGDATA}"
+			cp -r "${NEW}"/* "${PGDATA}"
 			echo "-----------------------------------------"
 			echo "Moving the new database files is complete"
 			echo "-----------------------------------------"

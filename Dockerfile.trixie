@@ -1,5 +1,5 @@
-# renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
-ARG PGTARGET=17.5
+# renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
+ARG PGTARGET=18.0
 
 ### Things we need in all build containers
 FROM debian:trixie AS base-build
@@ -25,6 +25,9 @@ ENV PG15_VERSION=15.14
 # renovate: datasource=repology depName=homebrew/postgresql@16 versioning=loose
 ENV PG16_VERSION=16.10
 
+# renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
+ENV PG17_VERSION=17.6
+
 # Where we'll do all our compiling and similar
 ENV BUILD_ROOT=/buildroot
 
@@ -45,7 +48,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG95}/postgresql-${PG95}.tar.b
 
 RUN cd postgresql-9.5.* && \
   ./configure --prefix=/usr/local-pg9.5 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
+  make -j $(nproc) world && \
   make install-world && \
   rm -rf /usr/local-pg9.5/include
 
@@ -57,8 +60,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG96}/postgresql-${PG96}.tar.b
 
 RUN cd postgresql-9.6.* && \
   ./configure --prefix=/usr/local-pg9.6 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg9.6/include
 
 ### PostgreSQL 10
@@ -68,8 +71,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG10}/postgresql-${PG10}.tar.b
 
 RUN cd postgresql-10.* && \
   ./configure --prefix=/usr/local-pg10 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg10/include
 
 ### PostgreSQL 11
@@ -79,8 +82,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG11}/postgresql-${PG11}.tar.b
 
 RUN cd postgresql-11.* && \
   ./configure --prefix=/usr/local-pg11 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg11/include
 
 ### PostgreSQL 12
@@ -90,8 +93,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG12_VERSION}/postgresql-${PG1
 
 RUN cd postgresql-12.* && \
   ./configure --prefix=/usr/local-pg12 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg12/include
 
 ### PostgreSQL 13
@@ -102,8 +105,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG13_VERSION}/postgresql-${PG1
 
 RUN cd postgresql-13.* && \
   ./configure --prefix=/usr/local-pg13 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg13/include
 
 ### PostgreSQL 14
@@ -114,8 +117,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG14_VERSION}/postgresql-${PG1
 
 RUN cd postgresql-14.* && \
   ./configure --prefix=/usr/local-pg14 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg14/include
 
 ### PostgreSQL 15
@@ -126,8 +129,8 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG15_VERSION}/postgresql-${PG1
 
 RUN cd postgresql-15.* && \
   ./configure --prefix=/usr/local-pg15 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg15/include
 
 ### PostgreSQL 16
@@ -138,9 +141,25 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG16_VERSION}/postgresql-${PG1
 
 RUN cd postgresql-16.* && \
   ./configure --prefix=/usr/local-pg16 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
-  make -j $(nproc) && \
-  make install-world && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
   rm -rf /usr/local-pg16/include
+
+### PostgreSQL 17
+FROM base-build AS build-17
+
+RUN apt update && \
+  apt install -y bison flex && \
+  apt clean
+
+RUN wget https://ftp.postgresql.org/pub/source/v${PG17_VERSION}/postgresql-${PG17_VERSION}.tar.gz && \
+  tar -xf postgresql-17*.tar.gz
+
+RUN cd postgresql-17.* && \
+  ./configure --prefix=/usr/local-pg17 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
+  rm -rf /usr/local-pg17/include
 
 # Use the PostgreSQL Trixie image as our output image base
 FROM postgres:${PGTARGET}-trixie
@@ -164,12 +183,14 @@ COPY --from=build-13 /usr/local-pg13 /usr/local-pg13
 COPY --from=build-14 /usr/local-pg14 /usr/local-pg14
 COPY --from=build-15 /usr/local-pg15 /usr/local-pg15
 COPY --from=build-16 /usr/local-pg16 /usr/local-pg16
+COPY --from=build-17 /usr/local-pg17 /usr/local-pg17
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
-RUN if [ "${PGTARGET}" == "${PG13_VERSION}" ]; then rm -rf /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" == "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" == "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16; fi
-RUN if [ "${PGTARGET}" == "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16; fi
+RUN if [ "${PGTARGET}" == "${PG13_VERSION}" ]; then rm -rf /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
+RUN if [ "${PGTARGET}" == "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
+RUN if [ "${PGTARGET}" == "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
+RUN if [ "${PGTARGET}" == "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16 /usr/local-pg17; fi
+RUN if [ "${PGTARGET}" == "${PG17_VERSION}" ]; then rm -rf /usr/local-pg17; fi
 
 # Install locale
 RUN apt update && \

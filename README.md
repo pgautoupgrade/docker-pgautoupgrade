@@ -44,9 +44,9 @@ Postgres container is based on Debian (see also the section on [Debian vs Alpine
 
 If you instead want to run a specific version of PostgreSQL
 then pick a matching tag on our Docker Hub. For example, to
-use PostgreSQL 17 you can use the `17-alpine` tag:
+use PostgreSQL 18 you can use the `18-alpine` tag:
 
-    pgautoupgrade/pgautoupgrade:17-alpine
+    pgautoupgrade/pgautoupgrade:18-alpine
 
 > [!NOTE]
 > The images available in Github Container Registry are for debugging
@@ -59,13 +59,12 @@ The default official Docker PostgreSQL image is Debian Linux
 based, and upgrading from that to one of our Alpine Linux
 based images doesn't always work out well.
 
-To solve that problem, we have Debian based images
-(`17-trixie` and `16-trixie`) available as well.
+To solve that problem, we have Debian based images available as well.
 
 To use either of those, choose the version of PostgreSQL you'd
 like to upgrade to, then change your docker image to match:
 
-    pgautoupgrade/pgautoupgrade:17-trixie
+    pgautoupgrade/pgautoupgrade:18-trixie
 
 ### "One shot" mode
 
@@ -107,12 +106,16 @@ The Bitnami containers do not persist the `postgresql.conf` and `pg_hba.conf` fi
 
 The official Postgres image, and therefore ours as well, use `999` as ID for the postgres user inside the container. Bitnami uses 1001. During the upgrade process, we make a copy of the data, which will be assigned to ID `999`. If you request the "one shot" mode, the original file permissions will be restored once the upgrade is completed.
 
-Be aware that we use the environment variables from the official Postgres image. Ensure you set `PGDATA` to the Bitnami folder (by default `/bitnami/postgresql/data`) and `POSTGRES_PASSWORD` to the password of your Postgres user.
+We use the official Postgres variables, but can map certain things:
+
+- Bitnami's `POSTGRESQL_PASSWORD` becomes `POSTGRES_PASSWORD`.
+- Bitnami's `POSTGRESQL_DATA_DIR` becomes `PGDATA`.
+- `PGDATA` is set automatically to `/bitnami/postgresql/data` if it is not empty.
 
 The container has to run as `root` if using `one shot` mode, otherwise we are unable to restore the existing file permissions of your Postgres data directory. You can run the container as user `999`, but then you will have to manually apply the file permissions to your Postgres data directory.
 
 > [!WARNING]
-> As of writing this paragraph (14th of November, 2024), we only tested upgrading from Bitnami Postgres v13, v14, v15, v16 to v17. For these versions, we used the latest available container version. Bitnami's script and directory structure could change over time. If you note any issues upgrading from other versions, please provide the exact SHA of the image so we can try to replicate the issue.
+> As of writing this paragraph (5th of October, 2025), we tested upgrading from Bitnami Postgres v9.5, v9.6, v10, v11, v12, v13, v14, v15, v16, v17 to v17 and v18. For these versions, we used the latest available container version from [Bitnami Legacy](https://hub.docker.com/r/bitnamilegacy/postgresql/). Bitnami's script and directory structure could change over time. If you note any issues upgrading from other versions, please provide the exact SHA of the image so we can try to replicate the issue. Also note we do not have any access to Bitnami Secure Images.
 
 ### One-shot mode in Kubernetes
 
@@ -129,7 +132,7 @@ initContainers:
     value: /bitnami/postgresql/data
   - name: POSTGRES_PASSWORD
     value: password
-image: pgautoupgrade/pgautoupgrade:17-trixie
+image: pgautoupgrade/pgautoupgrade:18-trixie
 name: upgrade-postgres
 securityContext:
   runAsUser: 0
@@ -211,5 +214,4 @@ to the newest PostgreSQL release, and outputs an obvious
 SUCCESS/FAILURE message for that loop.
 
 The test runs in a loop, testing (in sequence) upgrades from
-PostgreSQL versions 9.5, 9.6, 10.x, 11.x, 12.x, 13.x, 14.x, 15.x., 16.x and
-17.x.
+PostgreSQL versions 9.5, 9.6, 10.x, 11.x, 12.x, 13.x, 14.x, 15.x., 16.x and 17.x.
