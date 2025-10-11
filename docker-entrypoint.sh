@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -Eeo pipefail
-# TODO swap to -Eeuo pipefail above (after handling all potentially-unset variables)
 
 EXISTING_PG_HBA_CONF=0
 EXISTING_POSTGRESQL_CONF=0
@@ -62,6 +61,10 @@ trap 'forward_signal TERM' TERM
 trap 'forward_signal INT' INT
 trap 'forward_signal HUP' HUP
 trap 'forward_signal QUIT' QUIT
+
+# unset "-e" as some exit codes from the Postgres container will be considered a failure
+# and lead to a fast exit where the server process does not properly shutdown
+set +e
 
 # wait for the child process to exit
 wait "$pid"
