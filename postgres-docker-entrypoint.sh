@@ -552,11 +552,36 @@ _main() {
 			# e.g. "postgres -c wal_level=logical" --> "-c wal_level=logical" 
 			local run_options=("${@:2}")
 
+			# On PG v18, we have to check that data checksums, be it positive or negative, is set on the initdb args
+			# even when the user already provided initdb args, because otherwise Postgres v18 assumes you want checksums
+			# we now do this on every version to avoid one more conditional
+			# it also adds support for people who used Postgres with checksums before v18			
+			local DATA_CHECKSUMS_ENABLED
+			local DATA_CHECKSUMS_PARAMETER
+
+			if [[ -z "$POSTGRES_INITDB_ARGS" || "$POSTGRES_INITDB_ARGS" != *"data-checksums"* ]]; then
+				DATA_CHECKSUMS_ENABLED=$(echo 'SHOW DATA_CHECKSUMS' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'data_checksums = "' | cut -d '"' -f 2)
+
+				if [ "$DATA_CHECKSUMS_ENABLED" == "on" ]; then
+					DATA_CHECKSUMS_PARAMETER="--data-checksums"
+				elif [ "$PGTARGET_MAJOR" -eq 18 ]; then
+					# Postgres v18 enables data checksums by default and is the only version with this opt-out parameter
+					DATA_CHECKSUMS_PARAMETER="--no-data-checksums"
+				fi
+			fi
+
 			# If no initdb arguments were passed to us from the environment, then work out something valid ourselves
 			if [ "x${POSTGRES_INITDB_ARGS}" != "x" ]; then
-				echo "------------------------------------------------------------------------------"
-				echo "Using initdb arguments passed in from the environment: ${POSTGRES_INITDB_ARGS}"
-				echo "------------------------------------------------------------------------------"
+				if [[ -n "${DATA_CHECKSUMS_PARAMETER+x}" ]]; then
+					POSTGRES_INITDB_ARGS="${POSTGRES_INITDB_ARGS} ${DATA_CHECKSUMS_PARAMETER}"
+					echo "------------------------------------------------------------------------------"
+					echo "Amending initdb arguments passed in from the environment: ${POSTGRES_INITDB_ARGS}"
+					echo "------------------------------------------------------------------------------"
+				else
+					echo "------------------------------------------------------------------------------"
+					echo "Using initdb arguments passed in from the environment: ${POSTGRES_INITDB_ARGS}"
+					echo "------------------------------------------------------------------------------"
+				fi
 			else
 				echo "-------------------------------------------------"
 				echo "Remove postmaster.pid file from PG data directory"
@@ -568,19 +593,9 @@ _main() {
 				echo "------------------------------------"
 				local COLLATE=unset
 				local CTYPE=unset
-				local DATA_CHECKSUMS_ENABLED
-				local DATA_CHECKSUMS_PARAMETER
 				local ENCODING=unset
 				
-				DATA_CHECKSUMS_ENABLED=$(echo 'SHOW DATA_CHECKSUMS' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'data_checksums = "' | cut -d '"' -f 2)
 				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'server_encoding = "' | cut -d '"' -f 2)
-
-				if [ "$DATA_CHECKSUMS_ENABLED" == "on" ]; then
-					DATA_CHECKSUMS_PARAMETER="--data-checksums"
-				elif [ "$PGTARGET_MAJOR" -eq 18 ]; then
-					# Postgres v18 enables data checksums by default and is the only version with this opt-out parameter
-					DATA_CHECKSUMS_PARAMETER="--no-data-checksums"
-				fi
 
 				# LC_COLLATE and LC_TYPE have been removed with PG v16
 				# https://www.postgresql.org/docs/release/16.0/
