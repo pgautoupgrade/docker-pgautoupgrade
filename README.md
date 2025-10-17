@@ -159,6 +159,9 @@ error mounting ".../db-pv" to rootfs at "/var/lib/postgresql/data": change mount
 
 in Kubernetes.
 
+Then you have to adjust your volume mount from `/var/lib/postgresql/data` to `/var/lib/postgresql`.
+`pgautoupgrade` will look there for an old Postgres installation, and move the data into the new expected structure.
+
 Root cause is [a change by the Docker team for Postgres](https://github.com/docker-library/postgres/pull/1259) that enforces a new data directory structure with Postgres v18+.
 Previously, your Postgres data and the corresponding `PGDATA` pointed to `/var/lib/postgresql/data`.
 With Postgres v18+, it is `/var/lib/postgresql/MAJOR/docker`.
@@ -168,9 +171,6 @@ The Docker team also placed a symlink from `/var/lib/postgresql/data` to `/var/l
 The main reason is that `PGDATA` on Postgres v18+ points to the mentioned new path `/var/lib/postgresql/MAJOR/docker`.
 Means if you would upgrade to Postgres v18+ without any changes to `PGDATA`, you simply get an empty Postgres instance, instead of an upgraded one.
 But we also want to follow what the upstream Postgres image does; it should always be an option to ditch `pgautoupgrade` for the plain Postgres image.
-
-When upgrading to Postgres v18+, you can adjust your volume mount to `/var/lib/postgresql`.
-`pgautoupgrade` will also look there for an old Postgres installation, and move the data into the new expected structure.
 
 ## For Developers
 
