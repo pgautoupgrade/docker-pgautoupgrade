@@ -685,7 +685,7 @@ _main() {
 				echo "Updating extensions"
 				echo "*******************"
 
-				cat "${PGDATA}/update_extensions.sql" | psql --username="${POSTGRES_USER}" --database="${POSTGRES_DB}"
+				cat "${PGDATA}/update_extensions.sql" | psql --username="${POSTGRES_USER}" -d "${POSTGRES_DB}"
 				rm -rf "${PGDATA}/update_extensions.sql"
 			fi
 
