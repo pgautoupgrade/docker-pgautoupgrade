@@ -29,7 +29,7 @@ ENV PG15_VERSION=15.15
 ENV PG16_VERSION=16.11
 
 # renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
-ENV PG17_VERSION=17.6
+ENV PG17_VERSION=17.7
 
 # Where we'll do all our compiling and similar
 ENV BUILD_ROOT=/buildroot
