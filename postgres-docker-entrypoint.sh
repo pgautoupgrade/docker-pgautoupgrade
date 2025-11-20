@@ -507,9 +507,9 @@ _main() {
 			echo "Moving existing data files into OLD temporary directory"
 			echo "-------------------------------------------------------"
 			if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
-				mv -v "${PGDATA}"/* "${OLD}"
+				find "${PGDATA}" -mindepth 1 -maxdepth 1 -not -name "old" -exec mv {} "${OLD}/" \;
 			else
-				find /var/lib/postgresql -mindepth 1 -maxdepth 1 ! -name 18 -exec mv {} /var/lib/postgresql/18/docker/old/ \;
+				find /var/lib/postgresql -mindepth 1 -maxdepth 1 -not -name 18 -exec mv {} "${OLD}/" \;
 			fi
 			echo "-------------------------------------------------------------------"
 			echo "Moving existing data files into OLD temporary directory is complete"
