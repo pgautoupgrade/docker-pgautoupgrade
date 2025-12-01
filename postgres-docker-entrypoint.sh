@@ -648,7 +648,9 @@ _main() {
 			echo "-----------------------------------------------------"
 			echo "Copying the new database files to the active directory"
 			echo "-----------------------------------------------------"
-			cp -r "${NEW}"/* "${PGDATA}"
+			# Use -l to create hardlinks, since they're already used by pg_upgrade --link.
+			# This prevents copying all of the data, saving time and disk space.
+			cp -l -r "${NEW}"/* "${PGDATA}"
 			echo "-----------------------------------------"
 			echo "Moving the new database files is complete"
 			echo "-----------------------------------------"
