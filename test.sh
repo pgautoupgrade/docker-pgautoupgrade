@@ -67,28 +67,6 @@ test_run() {
     # Shut down any containers that are still running
     docker compose -f $PGAUTO_COMPOSE down --remove-orphans
 
-    # Delete the upgraded PostgreSQL data directory
-    sudo rm -rf postgres-data
-
-    import_adventure_works
-
-    # Start pgautoupgrade container
-    docker compose -f $PGAUTO_COMPOSE up --wait -d
-
-    # Verify the PostgreSQL data files are now the target version
-    PGVER=$(sudo cat $PGVERSION_FILE)
-    if [ "$PGVER" != "${TARGET%%.*}" ]; then
-        banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
-        FAILURE=1
-    else
-        banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} SUCCEEDED!"
-    fi
-
-    if ! docker compose -f $PGAUTO_COMPOSE exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='AdventureWorks'" | grep -q 1; then
-        banner "Adventure works database does not exist in new PostgreSQL container - upgrade did not work!"
-        FAILURE=1
-    fi
-
     # Shut down any containers that are still running
     docker compose -f docker-compose-pgauto.yml down --remove-orphans
 
@@ -120,6 +98,28 @@ test_run() {
     # Verify after one-shot that the official Postgres image can be used again
     docker compose -f $PGTARGET_COMPOSE up --wait -d
     if ! docker compose -f $PGTARGET_COMPOSE exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='AdventureWorks'" | grep -q 1; then
+        banner "Adventure works database does not exist in new PostgreSQL container - upgrade did not work!"
+        FAILURE=1
+    fi
+
+    # Delete the upgraded PostgreSQL data directory
+    sudo rm -rf postgres-data
+
+    import_adventure_works
+
+    # Start pgautoupgrade container
+    docker compose -f $PGAUTO_COMPOSE up --wait -d
+
+    # Verify the PostgreSQL data files are now the target version
+    PGVER=$(sudo cat $PGVERSION_FILE)
+    if [ "$PGVER" != "${TARGET%%.*}" ]; then
+        banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
+        FAILURE=1
+    else
+        banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} SUCCEEDED!"
+    fi
+
+    if ! docker compose -f $PGAUTO_COMPOSE exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='AdventureWorks'" | grep -q 1; then
         banner "Adventure works database does not exist in new PostgreSQL container - upgrade did not work!"
         FAILURE=1
     fi
