@@ -91,8 +91,6 @@ jobs:
           - flavor: "trixie"
             alias: "debian"
         pg_target:
-          - # renovate: datasource=repology depName=homebrew/postgresql@13 versioning=loose
-            PG_VERSION: "13.23"
           - # renovate: datasource=repology depName=homebrew/postgresql@14 versioning=loose
             PG_VERSION: "14.20"
           - # renovate: datasource=repology depName=homebrew/postgresql@15 versioning=loose

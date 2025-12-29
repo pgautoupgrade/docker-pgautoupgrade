@@ -12,12 +12,8 @@ ENV PG95=9.5.25
 ENV PG96=9.6.24
 ENV PG10=10.23
 ENV PG11=11.22
-
-# renovate: datasource=repology depName=homebrew/postgresql@12 versioning=loose
-ENV PG12_VERSION=12.22
-
-# renovate: datasource=repology depName=homebrew/postgresql@13 versioning=loose
-ENV PG13_VERSION=13.23
+ENV PG12=12.22
+ENV PG13=13.23
 
 # renovate: datasource=repology depName=homebrew/postgresql@14 versioning=loose
 ENV PG14_VERSION=14.20
@@ -93,7 +89,7 @@ RUN cd postgresql-11.* && \
 
 ### PostgreSQL 12
 FROM base-build AS build-12
-RUN wget https://ftp.postgresql.org/pub/source/v${PG12_VERSION}/postgresql-${PG12_VERSION}.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG12}/postgresql-${PG12}.tar.bz2 && \
   tar -xf postgresql-12*.tar.bz2
 
 RUN cd postgresql-12.* && \
@@ -105,7 +101,7 @@ RUN cd postgresql-12.* && \
 ### PostgreSQL 13
 FROM base-build AS build-13
 
-RUN wget https://ftp.postgresql.org/pub/source/v${PG13_VERSION}/postgresql-${PG13_VERSION}.tar.bz2 && \
+RUN wget https://ftp.postgresql.org/pub/source/v${PG13}/postgresql-${PG13}.tar.bz2 && \
   tar -xf postgresql-13*.tar.bz2
 
 RUN cd postgresql-13.* && \
@@ -189,7 +185,6 @@ COPY --from=build-16 /usr/local-pg16 /usr/local-pg16
 COPY --from=build-17 /usr/local-pg17 /usr/local-pg17
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
-RUN if [ "${PGTARGET}" == "${PG13_VERSION}" ]; then rm -rf /usr/local-pg13 /usr/local-pg14 /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
 RUN if [ "${PGTARGET}" == "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
 RUN if [ "${PGTARGET}" == "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
 RUN if [ "${PGTARGET}" == "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16 /usr/local-pg17; fi
