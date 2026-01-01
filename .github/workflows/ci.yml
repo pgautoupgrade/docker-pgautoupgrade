@@ -82,11 +82,12 @@ jobs:
         type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target.PG_VERSION }}-${{ matrix.operating_system.alias }}
 
     strategy:
+      fail-fast: false
       matrix:
         operating_system:
           - flavor: "alpine"
             # renovate: datasource=docker depName=alpine versioning=docker
-            OS_VERSION: "3.22"
+            OS_VERSION: "3.23"
             alias: "alpine"
           - flavor: "trixie"
             alias: "debian"
