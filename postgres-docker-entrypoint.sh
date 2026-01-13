@@ -483,6 +483,13 @@ _main() {
 				exec gosu postgres "$BASH_SOURCE" "$@"
 			fi
 
+			if [[ "$MOVING_TO_NEW_STRUCTURE" -eq 1 && -d "$PGDATA" ]]; then
+				echo "-------------------------------------------------------------------------------"
+				echo "Emptying out existing PGDATA directory at ${PGDATA} prior to moving data to new structure."
+				echo "-------------------------------------------------------------------------------"
+				rm -rf "${PGDATA:?}/"*
+			fi
+
 			create_upgrade_lock_file
 
 			# Don't automatically abort on non-0 exit status, as that messes with these upcoming mv commands
