@@ -5,6 +5,8 @@ EXISTING_PG_HBA_CONF=0
 EXISTING_POSTGRESQL_CONF=0
 POSTGRESQL_DATA_DIRECTORY_HAS_DATA=0
 
+df -h
+
 if [ -d "/bitnami/postgresql" ]; then
     # we deal with the standard Bitnami environment
     # overwrite PGDATA to point to the data directory

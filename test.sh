@@ -133,6 +133,8 @@ test_run() {
     fi
 }
 
+df -h
+
 # Shut down containers from previous test runs
 test_down
 
