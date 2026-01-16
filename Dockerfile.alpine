@@ -2,7 +2,7 @@
 ARG PGTARGET=18.0
 
 # renovate: datasource=docker depName=alpine versioning=loose
-ARG ALPINE_VERSION=3.22
+ARG ALPINE_VERSION=3.23
 
 ### Things we need in all build containers
 FROM alpine:${ALPINE_VERSION} AS base-build
@@ -48,7 +48,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG95}/postgresql-${PG95}.tar.b
   tar -xf postgresql-9.5*.tar.bz2
 
 RUN cd postgresql-9.5.* && \
-  ./configure --prefix=/usr/local-pg9.5 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  ./configure --prefix=/usr/local-pg9.5 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os -std=gnu17" && \
   make -j $(nproc) world && \
   make install-world && \
   rm -rf /usr/local-pg9.5/include
@@ -60,7 +60,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG96}/postgresql-${PG96}.tar.b
   tar -xf postgresql-9.6*.tar.bz2
 
 RUN cd postgresql-9.6.* && \
-  ./configure --prefix=/usr/local-pg9.6 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  ./configure --prefix=/usr/local-pg9.6 --with-openssl=no --without-readline --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os -std=gnu17" && \
   make -j $(nproc) world-bin && \
   make install-world-bin && \
   rm -rf /usr/local-pg9.6/include
@@ -71,7 +71,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG10}/postgresql-${PG10}.tar.b
   tar -xf postgresql-10*.tar.bz2
 
 RUN cd postgresql-10.* && \
-  ./configure --prefix=/usr/local-pg10 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  ./configure --prefix=/usr/local-pg10 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os -std=gnu17" && \
   make -j $(nproc) world-bin && \
   make install-world-bin && \
   rm -rf /usr/local-pg10/include
@@ -82,7 +82,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG11}/postgresql-${PG11}.tar.b
   tar -xf postgresql-11*.tar.bz2
 
 RUN cd postgresql-11.* && \
-  ./configure --prefix=/usr/local-pg11 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  ./configure --prefix=/usr/local-pg11 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os -std=gnu17" && \
   make -j $(nproc) world-bin && \
   make install-world-bin && \
   rm -rf /usr/local-pg11/include
@@ -93,7 +93,7 @@ RUN wget https://ftp.postgresql.org/pub/source/v${PG12}/postgresql-${PG12}.tar.b
   tar -xf postgresql-12*.tar.bz2
 
 RUN cd postgresql-12.* && \
-  ./configure --prefix=/usr/local-pg12 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  ./configure --prefix=/usr/local-pg12 --with-openssl=no --without-readline --with-icu --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os -std=gnu17" && \
   make -j $(nproc) world-bin && \
   make install-world-bin && \
   rm -rf /usr/local-pg12/include
