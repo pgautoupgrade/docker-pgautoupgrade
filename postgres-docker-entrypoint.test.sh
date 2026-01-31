@@ -1,0 +1,786 @@
+#!/usr/bin/env bash
+set -Eeo pipefail
+# TODO swap to -Eeuo pipefail above (after handling all potentially-unset variables)
+
+# Define the path to the upgrade lock file using PGDATA if set, otherwise default
+UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql/data}/upgrade_in_progress.lock"
+
+# usage: file_env VAR [DEFAULT]
+#    ie: file_env 'XYZ_DB_PASSWORD' 'example'
+# (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
+#  "$XYZ_DB_PASSWORD" from a file, especially for Docker's secrets feature)
+file_env() {
+	local var="$1"
+	local fileVar="${var}_FILE"
+	local def="${2:-}"
+	if [ "${!var:-}" ] && [ "${!fileVar:-}" ]; then
+		printf >&2 'error: both %s and %s are set (but are exclusive)\n' "$var" "$fileVar"
+		exit 1
+	fi
+	local val="$def"
+	if [ "${!var:-}" ]; then
+		val="${!var}"
+	elif [ "${!fileVar:-}" ]; then
+		val="$(< "${!fileVar}")"
+	fi
+	export "$var"="$val"
+	unset "$fileVar"
+}
+
+# check to see if this file is being run or sourced from another script
+_is_sourced() {
+	# https://unix.stackexchange.com/a/215279
+	[ "${#FUNCNAME[@]}" -ge 2 ] \
+		&& [ "${FUNCNAME[0]}" = '_is_sourced' ] \
+		&& [ "${FUNCNAME[1]}" = 'source' ]
+}
+
+# used to create initial postgres directories and if run as root, ensure ownership to the "postgres" user
+docker_create_db_directories() {
+	local user; user="$(id -u)"
+
+	mkdir -p "$PGDATA"
+	# ignore failure since there are cases where we can't chmod (and PostgreSQL might fail later anyhow - it's picky about permissions of this directory)
+	chmod 00700 "$PGDATA" || :
+
+	# ignore failure since it will be fine when using the image provided directory; see also https://github.com/docker-library/postgres/pull/289
+	mkdir -p /var/run/postgresql || :
+	chmod 03775 /var/run/postgresql || :
+
+	# Create the transaction log directory before initdb is run so the directory is owned by the correct user
+	if [ -n "${POSTGRES_INITDB_WALDIR:-}" ]; then
+		mkdir -p "$POSTGRES_INITDB_WALDIR"
+		if [ "$user" = '0' ]; then
+			find "$POSTGRES_INITDB_WALDIR" \! -user postgres -exec chown postgres '{}' +
+		fi
+		chmod 700 "$POSTGRES_INITDB_WALDIR"
+	fi
+
+	# allow the container to be started with `--user`
+	if [ "$user" = '0' ]; then
+		if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+			find "/var/lib/postgresql" \! -user postgres -exec chown postgres '{}' +
+		else
+			find "$PGDATA" \! -user postgres -exec chown postgres '{}' +
+		fi
+
+		find /var/run/postgresql \! -user postgres -exec chown postgres '{}' +
+	fi
+}
+
+# initialize empty PGDATA directory with new database via 'initdb'
+# arguments to `initdb` can be passed via POSTGRES_INITDB_ARGS or as arguments to this function
+# `initdb` automatically creates the "postgres", "template0", and "template1" dbnames
+# this is also where the database user is created, specified by `POSTGRES_USER` env
+docker_init_database_dir() {
+	# "initdb" is particular about the current user existing in "/etc/passwd", so we use "nss_wrapper" to fake that if necessary
+	# see https://github.com/docker-library/postgres/pull/253, https://github.com/docker-library/postgres/issues/359, https://cwrap.org/nss_wrapper.html
+	local uid; uid="$(id -u)"
+	if ! getent passwd "$uid" &> /dev/null; then
+		# see if we can find a suitable "libnss_wrapper.so" (https://salsa.debian.org/sssd-team/nss-wrapper/-/commit/b9925a653a54e24d09d9b498a2d913729f7abb15)
+		local wrapper
+		for wrapper in {/usr,}/lib{/*,}/libnss_wrapper.so; do
+			if [ -s "$wrapper" ]; then
+				NSS_WRAPPER_PASSWD="$(mktemp)"
+				NSS_WRAPPER_GROUP="$(mktemp)"
+				export LD_PRELOAD="$wrapper" NSS_WRAPPER_PASSWD NSS_WRAPPER_GROUP
+				local gid; gid="$(id -g)"
+				printf 'postgres:x:%s:%s:PostgreSQL:%s:/bin/false\n' "$uid" "$gid" "$PGDATA" > "$NSS_WRAPPER_PASSWD"
+				printf 'postgres:x:%s:\n' "$gid" > "$NSS_WRAPPER_GROUP"
+				break
+			fi
+		done
+	fi
+
+	if [ -n "${POSTGRES_INITDB_WALDIR:-}" ]; then
+		set -- --waldir "$POSTGRES_INITDB_WALDIR" "$@"
+	fi
+
+	# --pwfile refuses to handle a properly-empty file (hence the "\n"): https://github.com/docker-library/postgres/issues/1025
+	eval 'initdb --username="$POSTGRES_USER" --pwfile=<(printf "%s\n" "$POSTGRES_PASSWORD") '"$POSTGRES_INITDB_ARGS"' "$@"'
+
+	# unset/cleanup "nss_wrapper" bits
+	if [[ "${LD_PRELOAD:-}" == */libnss_wrapper.so ]]; then
+		rm -f "$NSS_WRAPPER_PASSWD" "$NSS_WRAPPER_GROUP"
+		unset LD_PRELOAD NSS_WRAPPER_PASSWD NSS_WRAPPER_GROUP
+	fi
+}
+
+# print large warning if POSTGRES_PASSWORD is long
+# error if both POSTGRES_PASSWORD is empty and POSTGRES_HOST_AUTH_METHOD is not 'trust'
+# print large warning if POSTGRES_HOST_AUTH_METHOD is set to 'trust'
+# assumes database is not set up, ie: [ -z "$DATABASE_ALREADY_EXISTS" ]
+docker_verify_minimum_env() {
+	case "${PG_MAJOR:-}" in
+		13) # https://github.com/postgres/postgres/commit/67a472d71c98c3d2fa322a1b4013080b20720b98
+			# check password first so we can output the warning before postgres
+			# messes it up
+			if [ "${#POSTGRES_PASSWORD}" -ge 100 ]; then
+				cat >&2 <<-'EOWARN'
+
+					WARNING: The supplied POSTGRES_PASSWORD is 100+ characters.
+
+					  This will not work if used via PGPASSWORD with "psql".
+
+					  https://www.postgresql.org/message-id/flat/E1Rqxp2-0004Qt-PL%40wrigleys.postgresql.org (BUG #6412)
+					  https://github.com/docker-library/postgres/issues/507
+
+				EOWARN
+			fi
+			;;
+	esac
+	if [ -z "$POSTGRES_PASSWORD" ] && [ 'trust' != "$POSTGRES_HOST_AUTH_METHOD" ]; then
+		# The - option suppresses leading tabs but *not* spaces. :)
+		cat >&2 <<-'EOE'
+			Error: Database is uninitialized and superuser password is not specified.
+			       You must specify POSTGRES_PASSWORD to a non-empty value for the
+			       superuser. For example, "-e POSTGRES_PASSWORD=password" on "docker run".
+
+			       You may also use "POSTGRES_HOST_AUTH_METHOD=trust" to allow all
+			       connections without a password. This is *not* recommended.
+
+			       See PostgreSQL documentation about "trust":
+			       https://www.postgresql.org/docs/current/auth-trust.html
+		EOE
+		exit 1
+	fi
+	if [ 'trust' = "$POSTGRES_HOST_AUTH_METHOD" ]; then
+		cat >&2 <<-'EOWARN'
+			********************************************************************************
+			WARNING: POSTGRES_HOST_AUTH_METHOD has been set to "trust". This will allow
+			         anyone with access to the Postgres port to access your database without
+			         a password, even if POSTGRES_PASSWORD is set. See PostgreSQL
+			         documentation about "trust":
+			         https://www.postgresql.org/docs/current/auth-trust.html
+			         In Docker's default configuration, this is effectively any other
+			         container on the same system.
+
+			         It is not recommended to use POSTGRES_HOST_AUTH_METHOD=trust. Replace
+			         it with "-e POSTGRES_PASSWORD=password" instead to set a password in
+			         "docker run".
+			********************************************************************************
+		EOWARN
+	fi
+}
+
+# usage: docker_process_init_files [file [file [...]]]
+#    ie: docker_process_init_files /always-initdb.d/*
+# process initializer files, based on file extensions and permissions
+docker_process_init_files() {
+	# psql here for backwards compatibility "${psql[@]}"
+	psql=( docker_process_sql )
+
+	printf '\n'
+	local f
+	for f; do
+		case "$f" in
+			*.sh)
+				# https://github.com/docker-library/postgres/issues/450#issuecomment-393167936
+				# https://github.com/docker-library/postgres/pull/452
+				if [ -x "$f" ]; then
+					printf '%s: running %s\n' "$0" "$f"
+					"$f"
+				else
+					printf '%s: sourcing %s\n' "$0" "$f"
+					. "$f"
+				fi
+				;;
+			*.sql)     printf '%s: running %s\n' "$0" "$f"; docker_process_sql -f "$f"; printf '\n' ;;
+			*.sql.gz)  printf '%s: running %s\n' "$0" "$f"; gunzip -c "$f" | docker_process_sql; printf '\n' ;;
+			*.sql.xz)  printf '%s: running %s\n' "$0" "$f"; xzcat "$f" | docker_process_sql; printf '\n' ;;
+			*.sql.zst) printf '%s: running %s\n' "$0" "$f"; zstd -dc "$f" | docker_process_sql; printf '\n' ;;
+			*)         printf '%s: ignoring %s\n' "$0" "$f" ;;
+		esac
+		printf '\n'
+	done
+}
+
+# Execute sql script, passed via stdin (or -f flag of pqsl)
+# usage: docker_process_sql [psql-cli-args]
+#    ie: docker_process_sql --dbname=mydb <<<'INSERT ...'
+#    ie: docker_process_sql -f my-file.sql
+#    ie: docker_process_sql <my-file.sql
+docker_process_sql() {
+	local query_runner=( psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc )
+	if [ -n "$POSTGRES_DB" ]; then
+		query_runner+=( --dbname "$POSTGRES_DB" )
+	fi
+
+	PGHOST= PGHOSTADDR= "${query_runner[@]}" "$@"
+}
+
+# create initial database
+# uses environment variables for input: POSTGRES_DB
+docker_setup_db() {
+	local dbAlreadyExists
+	dbAlreadyExists="$(
+		POSTGRES_DB= docker_process_sql --dbname postgres --set db="$POSTGRES_DB" --tuples-only <<-'EOSQL'
+			SELECT 1 FROM pg_database WHERE datname = :'db' ;
+		EOSQL
+	)"
+	if [ -z "$dbAlreadyExists" ]; then
+		POSTGRES_DB= docker_process_sql --dbname postgres --set db="$POSTGRES_DB" <<-'EOSQL'
+			CREATE DATABASE :"db" ;
+		EOSQL
+		printf '\n'
+	fi
+}
+
+# Loads various settings that are used elsewhere in the script
+# This should be called before any other functions
+docker_setup_env() {
+	file_env 'POSTGRES_PASSWORD'
+
+	file_env 'POSTGRES_USER' 'postgres'
+	file_env 'POSTGRES_DB' "$POSTGRES_USER"
+	file_env 'POSTGRES_INITDB_ARGS'
+	: "${POSTGRES_HOST_AUTH_METHOD:=}"
+
+	declare -g DATABASE_ALREADY_EXISTS
+	# look specifically for PG_VERSION, as it is expected in the DB dir
+	if [ -s "$PGDATA/PG_VERSION" ]; then
+		DATABASE_ALREADY_EXISTS='true'
+	fi
+}
+
+# append POSTGRES_HOST_AUTH_METHOD to pg_hba.conf for "host" connections
+# all arguments will be passed along as arguments to `postgres` for getting the value of 'password_encryption'
+pg_setup_hba_conf() {
+	# default authentication method is md5 on versions before 14
+	# https://www.postgresql.org/about/news/postgresql-14-released-2318/
+	if [ "$1" = 'postgres' ]; then
+		shift
+	fi
+	local auth
+	# check the default/configured encryption and use that as the auth method
+	auth="$(postgres -C password_encryption "$@")"
+	: "${POSTGRES_HOST_AUTH_METHOD:=$auth}"
+	{
+		printf '\n'
+		if [ 'trust' = "$POSTGRES_HOST_AUTH_METHOD" ]; then
+			printf '# warning trust is enabled for all connections\n'
+			printf '# see https://www.postgresql.org/docs/17/auth-trust.html\n'
+		fi
+		printf 'host all all all %s\n' "$POSTGRES_HOST_AUTH_METHOD"
+	} >> "$PGDATA/pg_hba.conf"
+}
+
+# start socket-only postgresql server for setting up or running scripts
+# all arguments will be passed along as arguments to `postgres` (via pg_ctl)
+docker_temp_server_start() {
+	if [ "$1" = 'postgres' ]; then
+		shift
+	fi
+
+	# internal start of server in order to allow setup using psql client
+	# does not listen on external TCP/IP and waits until start finishes
+	set -- "$@" -c listen_addresses='' -p "${PGPORT:-5432}"
+
+	# unset NOTIFY_SOCKET so the temporary server doesn't prematurely notify
+	# any process supervisor.
+	NOTIFY_SOCKET= \
+	PGUSER="${PGUSER:-$POSTGRES_USER}" \
+	pg_ctl -D "$PGDATA" \
+		-o "$(printf '%q ' "$@")" \
+		-w start
+}
+
+# stop postgresql server after done setting up user and running scripts
+docker_temp_server_stop() {
+	PGUSER="${PGUSER:-postgres}" \
+	pg_ctl -D "$PGDATA" -m fast -w stop
+}
+
+# Initialise PG data directory in a temp location with a specific locale
+initdb_locale() {
+	echo "Initialising PostgreSQL ${PGTARGET} data directory"
+	bin_path=$(get_bin_path)
+	${bin_path}/initdb --username="${POSTGRES_USER}" ${POSTGRES_INITDB_ARGS} ${NEW}
+}
+
+# check arguments for an option that would cause postgres to stop
+# return true if there is one
+_pg_want_help() {
+	local arg
+	for arg; do
+		case "$arg" in
+			# postgres --help | grep 'then exit'
+			# leaving out -C on purpose since it always fails and is unhelpful:
+			# postgres: could not access the server configuration file "/var/lib/postgresql/data/postgresql.conf": No such file or directory
+			-'?'|--help|--describe-config|-V|--version)
+				return 0
+				;;
+		esac
+	done
+	return 1
+}
+
+get_bin_path() {
+  if [ -f /etc/alpine-release ]; then
+    echo "/usr/local/bin"
+  else
+    echo "/usr/lib/postgresql/${PGTARGET%%.*}/bin"
+  fi
+}
+
+# Function to create the upgrade lock file
+create_upgrade_lock_file() {
+  echo "Creating upgrade lock file at $UPGRADE_LOCK_FILE"
+  touch "$UPGRADE_LOCK_FILE"
+}
+
+# Function to remove the upgrade lock file
+remove_upgrade_lock_file() {
+  echo "Removing upgrade lock file at $UPGRADE_LOCK_FILE"
+  rm -f "$UPGRADE_LOCK_FILE"
+}
+
+_main() {
+	# if first arg looks like a flag, assume we want to run postgres server
+	if [ "${1:0:1}" = '-' ]; then
+		set -- postgres "$@"
+	fi
+
+	if [ "$1" = 'postgres' ] && ! _pg_want_help "$@"; then
+		docker_setup_env
+
+		PGTARGET_MAJOR=${PGTARGET%%.*}
+		MOVING_TO_NEW_STRUCTURE=0
+		if [ -s "/var/lib/postgresql/PG_VERSION" ] && [ "$PGTARGET_MAJOR" -eq 18 ] && [ "$PGDATA" == "/var/lib/postgresql/18/docker" ]; then
+			MOVING_TO_NEW_STRUCTURE=1
+		fi
+
+		# setup data directories and permissions (when run as root)
+		docker_create_db_directories
+		if [ "$(id -u)" = '0' ]; then
+			# then restart script as postgres user
+			exec gosu postgres "$BASH_SOURCE" "$@"
+		fi
+
+		# only run initialization on an empty data directory
+		if [ -z "$DATABASE_ALREADY_EXISTS" ]; then
+			docker_verify_minimum_env
+
+			# check dir permissions to reduce likelihood of half-initialized database
+			ls /docker-entrypoint-initdb.d/ > /dev/null
+
+			docker_init_database_dir
+			pg_setup_hba_conf "$@"
+
+			# PGPASSWORD is required for psql when authentication is required for 'local' connections via pg_hba.conf and is otherwise harmless
+			# e.g. when '--auth=md5' or '--auth-local=md5' is used in POSTGRES_INITDB_ARGS
+			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
+			docker_temp_server_start "$@"
+
+			docker_setup_db
+			docker_process_init_files /docker-entrypoint-initdb.d/*
+
+			docker_temp_server_stop
+			unset PGPASSWORD
+
+			cat <<-'EOM'
+
+				PostgreSQL init process complete; ready for start up.
+
+			EOM
+		else
+			cat <<-'EOM'
+
+				PostgreSQL Database directory appears to contain a database; Skipping initialization
+
+			EOM
+		fi
+	fi
+
+	# For development of pgautoupgrade.  This spot leaves the container running, prior to the pgautoupgrade scripting
+	# executing
+	local UPGRADE_PERFORMED=0
+	if [ "x${PGAUTO_DEVEL}" = "xbefore" ]; then
+		echo "--------------------------------------------------------------------------"
+		echo "In pgautoupgrade development mode, paused prior to pgautoupgrade scripting"
+		echo "--------------------------------------------------------------------------"
+		while :; do
+			sleep 5
+		done
+	else
+		### The main pgautoupgrade scripting starts here ###
+
+		echo "************************************"
+		echo "PostgreSQL data directory: ${PGDATA}"
+		echo "************************************"
+
+		# Get the version of the PostgreSQL data files
+		local PGVER=${PGTARGET%%.*}
+
+		if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+			PGVER=$(cat "/var/lib/postgresql/PG_VERSION")
+		elif [ -s "${PGDATA}/PG_VERSION" ]; then
+			PGVER=$(cat "${PGDATA}/PG_VERSION")
+		fi
+
+		# If the version of PostgreSQL data files doesn't match our desired version, then upgrade them
+		if [ "${PGVER}" != "${PGTARGET_MAJOR}" ]; then
+			# Ensure the database files are a version we can upgrade
+			local RECOGNISED=0
+			local OLDPATH=unset
+			if [ "${PGVER}" = "9.5" ] || [ "${PGVER}" = "9.6" ] || [ "${PGVER}" = "10" ] || [ "${PGVER}" = "11" ] || [ "${PGVER}" = "12" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET_MAJOR}" -gt 13 ] && [ "${PGVER}" = "13" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET_MAJOR}" -gt 14 ] && [ "${PGVER}" = "14" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET_MAJOR}" -gt 15 ] && [ "${PGVER}" = "15" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET_MAJOR}" -gt 16 ] && [ "${PGVER}" = "16" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${PGTARGET_MAJOR}" -gt 17 ] && [ "${PGVER}" = "17" ]; then
+				RECOGNISED=1
+			fi
+			if [ "${RECOGNISED}" -eq 1 ]; then
+				OLDPATH="/usr/local-pg${PGVER}"
+				echo "*******************************************************************************************"
+				echo "Performing PG upgrade on version ${PGVER} database files.  Upgrading to version ${PGTARGET}"
+				echo "*******************************************************************************************"
+			else
+				echo "****************************************************************************"
+				echo "Unrecognised version of PostgreSQL database files found, aborting completely"
+				echo "****************************************************************************"
+				exit 9
+			fi
+
+			# Check for presence of old/new directories, indicating a failed previous autoupgrade
+			echo "----------------------------------------------------------------------"
+			echo "Checking for left over artifacts from a failed previous autoupgrade..."
+			echo "----------------------------------------------------------------------"
+			local OLD="${PGDATA}/old"
+			NEW="${PGDATA}/new"
+
+			if [ -d "${OLD}" ]; then
+				echo "*****************************************"
+				echo "Left over OLD directory found.  Aborting."
+				echo "*****************************************"
+				exit 10
+			fi
+			if [ -d "${NEW}" ]; then
+				echo "*****************************************"
+				echo "Left over NEW directory found.  Aborting."
+				echo "*****************************************"
+				exit 11
+			fi
+			echo "-------------------------------------------------------------------------------"
+			echo "No artifacts found from a failed previous autoupgrade.  Continuing the process."
+			echo "-------------------------------------------------------------------------------"
+
+			if [ "$(id -u)" != "$(id -u postgres)" ]; then
+				echo "*******************************************************************************************"
+				echo "Postgres container does not yet run as postgres user. Downgrading now using gosu."
+				echo "*******************************************************************************************"
+				exec gosu postgres "$BASH_SOURCE" "$@"
+			fi
+
+			if [[ "$MOVING_TO_NEW_STRUCTURE" -eq 1 && -d "$PGDATA" ]]; then
+				echo "-------------------------------------------------------------------------------"
+				echo "Emptying out existing PGDATA directory at ${PGDATA} prior to moving data to new structure."
+				echo "-------------------------------------------------------------------------------"
+				rm -rf "${PGDATA:?}/"*
+			fi
+
+			create_upgrade_lock_file
+
+			# Don't automatically abort on non-0 exit status, as that messes with these upcoming mv commands
+			set +e
+
+			# Move the PostgreSQL data files into a subdirectory of the mount point
+			echo "---------------------------------------"
+			echo "Creating OLD temporary directory ${OLD}"
+			echo "---------------------------------------"
+			mkdir "${OLD}"
+			if [ ! -d "${OLD}" ]; then
+				echo "*********************************************************************"
+				echo "Creation of temporary directory '${OLD}' failed.  Aborting completely"
+				echo "*********************************************************************"
+				exit 7
+			fi
+			echo "--------------------------------------------"
+			echo "Creating OLD temporary directory is complete"
+			echo "--------------------------------------------"
+
+			echo "-------------------------------------------------------"
+			echo "Moving existing data files into OLD temporary directory"
+			echo "-------------------------------------------------------"
+			if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
+				find "${PGDATA}" -mindepth 1 -maxdepth 1 -not -name "old" -exec mv {} "${OLD}/" \;
+			else
+				find /var/lib/postgresql -mindepth 1 -maxdepth 1 -not -name 18 -exec mv {} "${OLD}/" \;
+			fi
+			echo "-------------------------------------------------------------------"
+			echo "Moving existing data files into OLD temporary directory is complete"
+			echo "-------------------------------------------------------------------"
+
+			# >>> TEST BREAKPOINT <<<
+			if [ "${TEST_BREAKPOINT:-}" = "1" ]; then
+			    echo "TEST_BREAKPOINT active: sleeping forever after moving data into OLD"
+			    sleep infinity
+			fi
+			# <<< END TEST BREAKPOINT <<<
+
+			echo "---------------------------------------"
+			echo "Creating NEW temporary directory ${NEW}"
+			echo "---------------------------------------"
+			mkdir "${NEW}"
+			if [ ! -d "${NEW}" ]; then
+				echo "********************************************************************"
+				echo "Creation of temporary directory '${NEW}' failed. Aborting completely"
+				echo "********************************************************************"
+				# With a failure at this point we should be able to move the old data back
+				# to its original location
+				if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
+					mv -v "${OLD}"/* "${PGDATA}"
+				else
+					mv -v "${OLD}"/* "/var/lib/postgresql"
+				fi
+				rmdir old
+				exit 8
+			fi
+			echo "--------------------------------------------"
+			echo "Creating NEW temporary directory is complete"
+			echo "--------------------------------------------"
+
+			echo "-----------------------------------------------------"
+			echo "Changing permissions of temporary directories to 0700"
+			echo "-----------------------------------------------------"
+			chmod 0700 "${OLD}" "${NEW}"
+			echo "---------------------------------------------------------"
+			echo "Changing permissions of temporary directories is complete"
+			echo "---------------------------------------------------------"
+
+			# Return the error handling back to automatically aborting on non-0 exit status
+			set -e
+
+			# Remove 'postgres' element from 'postgres --runtime-option vars'
+			# e.g. "postgres -c wal_level=logical" --> "-c wal_level=logical" 
+			local run_options=("${@:2}")
+
+			# On PG v18, we have to check that data checksums, be it positive or negative, is set on the initdb args
+			# even when the user already provided initdb args, because otherwise Postgres v18 assumes you want checksums
+			# we now do this on every version to avoid one more conditional
+			# it also adds support for people who used Postgres with checksums before v18			
+			local DATA_CHECKSUMS_ENABLED
+			local DATA_CHECKSUMS_PARAMETER
+
+			if [[ -z "$POSTGRES_INITDB_ARGS" || "$POSTGRES_INITDB_ARGS" != *"data-checksums"* ]]; then
+				DATA_CHECKSUMS_ENABLED=$(echo 'SHOW DATA_CHECKSUMS' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'data_checksums = "' | cut -d '"' -f 2)
+
+				if [ "$DATA_CHECKSUMS_ENABLED" == "on" ]; then
+					DATA_CHECKSUMS_PARAMETER="--data-checksums"
+				elif [ "$PGTARGET_MAJOR" -eq 18 ]; then
+					# Postgres v18 enables data checksums by default and is the only version with this opt-out parameter
+					DATA_CHECKSUMS_PARAMETER="--no-data-checksums"
+				fi
+			fi
+
+			# If no initdb arguments were passed to us from the environment, then work out something valid ourselves
+			if [ "x${POSTGRES_INITDB_ARGS}" != "x" ]; then
+				if [[ -n "${DATA_CHECKSUMS_PARAMETER+x}" ]]; then
+					POSTGRES_INITDB_ARGS="${POSTGRES_INITDB_ARGS} ${DATA_CHECKSUMS_PARAMETER}"
+					echo "------------------------------------------------------------------------------"
+					echo "Amending initdb arguments passed in from the environment: ${POSTGRES_INITDB_ARGS}"
+					echo "------------------------------------------------------------------------------"
+				else
+					echo "------------------------------------------------------------------------------"
+					echo "Using initdb arguments passed in from the environment: ${POSTGRES_INITDB_ARGS}"
+					echo "------------------------------------------------------------------------------"
+				fi
+			else
+				echo "-------------------------------------------------"
+				echo "Remove postmaster.pid file from PG data directory"
+				echo "-------------------------------------------------"
+				rm -f "${OLD}"/postmaster.pid
+
+				echo "------------------------------------"
+				echo "Determining our own initdb arguments"
+				echo "------------------------------------"
+				local COLLATE=unset
+				local CTYPE=unset
+				local ENCODING=unset
+				
+				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'server_encoding = "' | cut -d '"' -f 2)
+
+				# LC_COLLATE and LC_TYPE have been removed with PG v16
+				# https://www.postgresql.org/docs/release/16.0/
+				if [ "$PGTARGET_MAJOR" -lt 16 ]; then
+					COLLATE=$(echo 'SHOW LC_COLLATE' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_collate = "' | cut -d '"' -f 2)
+					CTYPE=$(echo 'SHOW LC_CTYPE' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'lc_ctype = "' | cut -d '"' -f 2)
+
+					POSTGRES_INITDB_ARGS="--locale=${COLLATE} --lc-collate=${COLLATE} --lc-ctype=${CTYPE} --encoding=${ENCODING} ${DATA_CHECKSUMS_PARAMETER}"
+				else
+					POSTGRES_INITDB_ARGS="--encoding=${ENCODING} ${DATA_CHECKSUMS_PARAMETER}"
+				fi
+
+				# Append additional runtime args passed directly into script
+				POSTGRES_INITDB_ARGS="${POSTGRES_INITDB_ARGS} ${run_options[*]}"
+
+				echo "---------------------------------------------------------------"
+				echo "The initdb arguments we determined are: ${POSTGRES_INITDB_ARGS}"
+				echo "---------------------------------------------------------------"
+			fi
+
+			# Initialise the new PostgreSQL database directory
+			echo "--------------------------------------------------------------------------------------------------------------------"
+			echo "Old database using collation settings: '${POSTGRES_INITDB_ARGS}'.  Initialising new database with those settings too"
+			echo "--------------------------------------------------------------------------------------------------------------------"
+			initdb_locale "${POSTGRES_INITDB_ARGS}"
+			echo "------------------------------------"
+			echo "New database initialisation complete"
+			echo "------------------------------------"
+
+			# Change into the PostgreSQL database directory, to avoid a pg_upgrade error about write permissions
+			cd "${PGDATA}"
+
+			# Run the pg_upgrade command itself
+			echo "---------------------------------------"
+			echo "Running pg_upgrade command, from $(pwd)"
+			echo "---------------------------------------"
+			bin_path=$(get_bin_path)
+			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
+			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link \
+			  --old-datadir "${OLD}" --new-datadir "${NEW}" \
+			  --old-bindir "${OLDPATH}/bin" --new-bindir "${bin_path}" \
+			  --socketdir="/var/run/postgresql" \
+			  --old-options "${run_options[*]}" --new-options "${run_options[*]}"
+			unset PGPASSWORD
+			echo "--------------------------------------"
+			echo "Running pg_upgrade command is complete"
+			echo "--------------------------------------"
+
+			# Move the new database files into place
+			echo "-----------------------------------------------------"
+			echo "Copying the new database files to the active directory"
+			echo "-----------------------------------------------------"
+			# Use -l to create hardlinks, since they're already used by pg_upgrade --link.
+			# This prevents copying all of the data, saving time and disk space.
+			cp -l -r "${NEW}"/* "${PGDATA}"
+			echo "-----------------------------------------"
+			echo "Moving the new database files is complete"
+			echo "-----------------------------------------"
+
+			# Re-use the pg_hba.conf and pg_ident.conf from the old data directory
+			echo "--------------------------------------------------------------"
+			echo "Copying the old pg_hba and pg_ident configuration files across"
+			echo "--------------------------------------------------------------"
+			cp -f "${OLD}/pg_hba.conf" "${OLD}/pg_ident.conf" "${PGDATA}"
+			echo "-------------------------------------------------------------------"
+			echo "Copying the old pg_hba and pg_ident configuration files is complete"
+			echo "-------------------------------------------------------------------"
+
+			# Remove the left over database files
+			echo "---------------------------------"
+			echo "Removing left over database files"
+			echo "---------------------------------"
+			rm -rf "${OLD}" "${NEW}" ~/delete_old_cluster.sh
+			echo "---------------------------------------------"
+			echo "Removing left over database files is complete"
+			echo "---------------------------------------------"
+
+			echo "***************************************************************************************"
+			echo "Automatic upgrade process finished upgrading the data format to PostgreSQL ${PGTARGET}."
+			echo "***************************************************************************************"
+
+			UPGRADE_PERFORMED=1
+
+			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
+			docker_temp_server_start "$@"
+
+			if [ -e "${PGDATA}/update_extensions.sql" ]; then
+				echo "*******************"
+				echo "Updating extensions"
+				echo "*******************"
+
+				cat "${PGDATA}/update_extensions.sql" | psql --username="${POSTGRES_USER}"
+				rm -rf "${PGDATA}/update_extensions.sql"
+			fi
+
+			echo "****************************"
+			echo "Updating query planner stats"
+			echo "****************************"
+
+			DB_LIST=$(echo 'SELECT datname FROM pg_catalog.pg_database WHERE datistemplate IS FALSE' | psql --username="${POSTGRES_USER}" -1t --csv "${POSTGRES_DB}")
+			for DATABASE in ${DB_LIST}; do
+				echo "VACUUM (ANALYZE, VERBOSE, INDEX_CLEANUP FALSE)" | psql --username="${POSTGRES_USER}" -t --csv "${DATABASE}"
+			done
+
+			if [ "x${PGAUTO_REINDEX}" != "xno" ]; then
+				# Reindex the databases
+				echo "------------------------"
+				echo "Reindexing the databases"
+				echo "------------------------"
+
+				if [[ "$PGTARGET_MAJOR" -le 15 ]]; then
+					reindexdb --all --username="${POSTGRES_USER}"
+				else
+					reindexdb --all --concurrently --username="${POSTGRES_USER}"
+				fi
+				
+				echo "-------------------------------"
+				echo "End of reindexing the databases"
+				echo "-------------------------------"
+			fi
+
+			unset PGPASSWORD
+			docker_temp_server_stop
+
+			echo "*******************************************"
+			echo "Upgrade to PostgreSQL ${PGTARGET} complete."
+			echo "*******************************************"
+
+			remove_upgrade_lock_file
+		fi
+
+		### The main pgautoupgrade scripting ends here ###
+	fi
+
+	# For development of pgautoupgrade.  This spot leaves the container running, after the pgautoupgrade scripting has
+	# executed, but without subsequently running the PostgreSQL server
+	if [ "x${PGAUTO_DEVEL}" = "xserver" ]; then
+		echo "-------------------------------------------------------------------"
+		echo "In pgautoupgrade development mode, paused after main pg_upgrade has"
+		echo "run, but before database server and post-upgrade tasks have started"
+		echo "-------------------------------------------------------------------"
+		while :; do
+			sleep 5
+		done
+	else
+		# If no upgrade was performed or the upgrade has finished, then we start PostgreSQL as per normal as long as "one shot" mode wasn't requested
+		if [ "x${PGAUTO_ONESHOT}" = "xyes" ]; then
+			if [ "${UPGRADE_PERFORMED}" -eq 1 ]; then
+				echo "**********************************************************************************"
+				echo "'One shot' automatic upgrade was requested, so exiting as the upgrade has finished"
+				echo "**********************************************************************************"
+			else
+				echo "***********************************************************************************"
+				echo "'One shot' automatic upgrade was requested, so exiting as there is no upgrade to do"
+				echo "If you're seeing this message and expecting an upgrade to be happening, it probably"
+				echo "means the container is being started in a loop and a previous run already did it :)"
+				echo "***********************************************************************************"
+			fi
+		else
+			# Start PostgreSQL
+			exec "$@"
+		fi
+	fi
+}
+
+# Check if an upgrade lock file exists at script start and exit if it does
+if [ -f "$UPGRADE_LOCK_FILE" ]; then
+  echo "Upgrade lock file already exists, indicating an incomplete previous upgrade. Exiting."
+  exit 1
+fi
+
+if ! _is_sourced; then
+	_main "$@"
+fi
