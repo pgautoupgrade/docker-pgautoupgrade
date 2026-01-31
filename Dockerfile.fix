@@ -2,7 +2,7 @@
 
 FROM pgautoupgrade/pgautoupgrade:17.7-debian
 
-COPY pgautoupgrade-healthcheck.sh postgres-docker-entrypoint.test.sh docker-entrypoint.sh /usr/local/bin/
+COPY postgres-docker-entrypoint.fix.sh /usr/local/bin/postgres-docker-entrypoint.sh
 
 # Just to be explicit
 ENV TEST_BREAKPOINT=1
