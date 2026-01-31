@@ -15,7 +15,7 @@ read_env_or_file() {
 }
 
 # Define the path to the upgrade lock file using PGDATA if set, otherwise default
-UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql/data}/upgrade_in_progress.lock"
+UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql/data}/old/upgrade_in_progress.lock"
 
 # Check if an upgrade is in progress and keep the container alive
 if [ -f "$UPGRADE_LOCK_FILE" ]; then
