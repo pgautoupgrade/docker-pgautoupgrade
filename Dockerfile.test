@@ -1,9 +1,0 @@
-# docker build -f Dockerfile.test -t pgautoupgrade:17-test .
-
-FROM pgautoupgrade/pgautoupgrade:17.7-debian
-
-# Use the patched entrypoint script
-COPY postgres-docker-entrypoint.test.sh /usr/local/bin/postgres-docker-entrypoint.sh
-
-# Just to be explicit
-ENV TEST_BREAKPOINT=1
