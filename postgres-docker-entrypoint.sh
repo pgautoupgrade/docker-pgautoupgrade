@@ -514,9 +514,17 @@ _main() {
 			echo "Moving existing data files into OLD temporary directory"
 			echo "-------------------------------------------------------"
 			if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
-				find "${PGDATA}" -mindepth 1 -maxdepth 1 -not -name "old" -exec mv {} "${OLD}/" \;
+				find "${PGDATA}" \
+					-mindepth 1 -maxdepth 1 \
+					-not -name "old" \
+					-not -name "upgrade_in_progress.lock" \
+					-exec mv {} "${OLD}/" \;
 			else
-				find /var/lib/postgresql -mindepth 1 -maxdepth 1 -not -name 18 -exec mv {} "${OLD}/" \;
+				find /var/lib/postgresql \
+					-mindepth 1 -maxdepth 1 \
+					-not -name 18 \
+					-not -name "upgrade_in_progress.lock" \
+					-exec mv {} "${OLD}/" \;
 			fi
 			echo "-------------------------------------------------------------------"
 			echo "Moving existing data files into OLD temporary directory is complete"
