@@ -16,7 +16,7 @@ ENV PG13=13.23
 ENV PG14_VERSION=14.20
 
 # renovate: datasource=repology depName=homebrew/postgresql@15 versioning=loose
-ENV PG15_VERSION=15.15
+ENV PG15_VERSION=15.16
 
 # renovate: datasource=repology depName=homebrew/postgresql@16 versioning=loose
 ENV PG16_VERSION=16.11
