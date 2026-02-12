@@ -96,7 +96,7 @@ jobs:
           - # renovate: datasource=repology depName=homebrew/postgresql@15 versioning=loose
             PG_VERSION: "15.16"
           - # renovate: datasource=repology depName=homebrew/postgresql@16 versioning=loose
-            PG_VERSION: "16.11"
+            PG_VERSION: "16.12"
           - # renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
             PG_VERSION: "17.7"
           - # renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
