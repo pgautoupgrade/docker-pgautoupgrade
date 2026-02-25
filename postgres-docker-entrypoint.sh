@@ -702,7 +702,7 @@ _main() {
 				echo "Updating extensions"
 				echo "*******************"
 
-				cat "${PGDATA}/update_extensions.sql" | psql --username="${POSTGRES_USER}"
+				cat "${PGDATA}/update_extensions.sql" | psql --username="${POSTGRES_USER}" "${POSTGRES_DB:-postgres}"
 				rm -rf "${PGDATA}/update_extensions.sql"
 			fi
 
