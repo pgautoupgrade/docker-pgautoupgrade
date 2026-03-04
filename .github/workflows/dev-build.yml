@@ -48,7 +48,7 @@ jobs:
             # Setup QEMU emulator to build multi-arch images
             # https://github.com/docker/setup-qemu-action
             - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
+              uses: docker/setup-qemu-action@v4
 
             # Configure Buildx for Docker build
             # https://github.com/docker/setup-buildx-action
