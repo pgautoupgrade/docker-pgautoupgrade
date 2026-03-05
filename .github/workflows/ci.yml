@@ -46,7 +46,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build and push image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: "Dockerfile.${{ matrix.flavor }}"
           push: true
@@ -134,7 +134,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ matrix.pg_target.PG_VERSION }}.0,suffix=-${{ matrix.operating_system.alias }}
 
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           load: true
@@ -166,7 +166,7 @@ jobs:
 
       - name: Push image
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           platforms: linux/amd64,linux/arm64
@@ -180,7 +180,7 @@ jobs:
 
       - name: Push latest image for each supported OS
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target.PG_VERSION == env.LATEST_POSTGRES_VERSION
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           platforms: linux/amd64,linux/arm64
@@ -195,7 +195,7 @@ jobs:
 
       - name: Push general latest image
         if: github.repository == 'pgautoupgrade/docker-pgautoupgrade' && github.ref == 'refs/heads/main' && matrix.pg_target.PG_VERSION == env.LATEST_POSTGRES_VERSION && matrix.operating_system.flavor == 'alpine'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: "Dockerfile.${{ matrix.operating_system.flavor }}"
           platforms: linux/amd64,linux/arm64
