@@ -2,7 +2,7 @@
 ARG PGTARGET=18.0
 
 ### Things we need in all build containers
-FROM debian:trixie AS base-build
+FROM debian:trixie-20260316 AS base-build
 
 # The versions of PostgreSQL to use
 ENV PG95=9.5.25
