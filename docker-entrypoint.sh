@@ -67,8 +67,14 @@ trap 'forward_signal QUIT' QUIT
 set +e
 
 # wait for the child process to exit
+# if we get SIGINT or SIGTERM, then it will terminate the first "wait" but the PG process is still running
+# therefore, we look up if the process still runs and if so, wait again
 wait "$pid"
 exit_code=$?
+if kill -0 "$pid" 2>/dev/null; then
+    wait "$pid"
+    exit_code=$?
+fi
 
 if [[ "x${PGAUTO_ONESHOT}" = "xyes" && $POSTGRESQL_DATA_DIRECTORY_HAS_DATA = 1 ]]; then
     if [ "$EXISTING_POSTGRESQL_CONF" = "0" ]; then
