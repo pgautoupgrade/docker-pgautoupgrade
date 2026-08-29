@@ -8,7 +8,7 @@ on:
 
 env:
   # renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
-  LATEST_POSTGRES_VERSION: "18.4"
+  LATEST_POSTGRES_VERSION: "18.6"
 
 permissions: {}
 
@@ -102,7 +102,7 @@ jobs:
           - # renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
             PG_VERSION: "17.11"
           - # renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
-            PG_VERSION: "18.4"
+            PG_VERSION: "18.6"
 
     steps:
       - name: Set up QEMU
