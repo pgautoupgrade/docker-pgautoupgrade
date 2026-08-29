@@ -79,6 +79,7 @@ test_run() {
     PGVER=$(sudo cat $PGVERSION_FILE)
     if [ "$PGVER" != "${TARGET%%.*}" ]; then
         banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} FAILED!"
+        docker logs test-postgres-1
         FAILURE=1
     else
         banner '*' "Standard automatic upgrade of PostgreSQL from version ${VERSION} to ${TARGET} SUCCEEDED!"
@@ -86,6 +87,7 @@ test_run() {
 
     if ! docker compose -f $PGAUTO_COMPOSE exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='AdventureWorks'" | grep -q 1; then
         banner "Adventure works database does not exist in new PostgreSQL container - upgrade did not work!"
+        docker logs test-postgres-1
         FAILURE=1
     fi
 
