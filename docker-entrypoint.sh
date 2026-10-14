@@ -48,6 +48,11 @@ if [ -d "$PGDATA" ] && [ -f "$PGDATA/PG_VERSION" ]; then
         echo "-------------------------------------------------------------------------------"
         cp -f "/opt/pgautoupgrade/pg_hba.conf" "${PGDATA}/pg_hba.conf"
     fi
+elif [ "x${PGAUTO_ONESHOT}" = "xyes" ] && [ ! -f "/var/lib/postgresql/PG_VERSION" ]; then
+    echo "-------------------------------------------------------------------------------"
+    echo "No existing Postgres data directory found at ${PGDATA}, and one shot mode was requested. Exiting."
+    echo "-------------------------------------------------------------------------------"
+    exit 0
 fi
 
 /usr/local/bin/postgres-docker-entrypoint.sh "$@" &
