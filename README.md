@@ -44,9 +44,9 @@ Postgres container is based on Debian (see also the section on [Debian vs Alpine
 
 If you instead want to run a specific version of PostgreSQL
 then pick a matching tag on our Docker Hub. For example, to
-use PostgreSQL 18 you can use the `18-alpine` tag:
+use PostgreSQL 19 you can use the `19-alpine` tag:
 
-    pgautoupgrade/pgautoupgrade:18-alpine
+    pgautoupgrade/pgautoupgrade:19-alpine
 
 > [!NOTE]
 > The images available in Github Container Registry are for debugging
@@ -64,7 +64,7 @@ To solve that problem, we have Debian based images available as well.
 To use either of those, choose the version of PostgreSQL you'd
 like to upgrade to, then change your docker image to match:
 
-    pgautoupgrade/pgautoupgrade:18-trixie
+    pgautoupgrade/pgautoupgrade:19-trixie
 
 ### "One shot" mode
 
@@ -97,6 +97,12 @@ $ docker run --name pgauto -it \
 
 > [!WARNING]
 > PG v15 and below do not support reindexing system tables in a database concurrently. This means, when we start the indexing operation, database locks are placed which do not allow for any modifications as long as the task is running. We recommend using PG v16 or later where this is not an issue.
+
+### Upgrading from Postgres v18 to v19
+
+Since Postgres v18, the data directory is `/var/lib/postgresql/MAJOR/docker`. When upgrading from v18 to v19, the v18 data therefore already lives in its own directory and is upgraded in place into `/var/lib/postgresql/19/docker`, without being copied first. After a successful upgrade, the v18 directory is deleted, as it is no longer usable as a Postgres v18 cluster.
+
+While the upgrade runs, a lock file is kept at `/var/lib/postgresql/19/upgrade_in_progress.lock`. If the container is interrupted, it refuses to start until you delete `/var/lib/postgresql/19` and retry (the v18 data is not modified until the upgrade succeeds).
 
 ### Upgrading from a Bitnami container
 
@@ -132,7 +138,7 @@ initContainers:
     value: /bitnami/postgresql/data
   - name: POSTGRES_PASSWORD
     value: password
-image: pgautoupgrade/pgautoupgrade:18-trixie
+image: pgautoupgrade/pgautoupgrade:19-trixie
 name: upgrade-postgres
 securityContext:
   runAsUser: 0
@@ -243,4 +249,4 @@ to the newest PostgreSQL release, and outputs an obvious
 SUCCESS/FAILURE message for that loop.
 
 The test runs in a loop, testing (in sequence) upgrades from
-PostgreSQL versions 9.5, 9.6, 10.x, 11.x, 12.x, 13.x, 14.x, 15.x., 16.x and 17.x.
+PostgreSQL versions 9.5, 9.6, 10.x, 11.x, 12.x, 13.x, 14.x, 15.x., 16.x, 17.x and 18.x.
