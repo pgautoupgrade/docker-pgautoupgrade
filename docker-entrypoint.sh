@@ -48,7 +48,8 @@ if [ -d "$PGDATA" ] && [ -f "$PGDATA/PG_VERSION" ]; then
         echo "-------------------------------------------------------------------------------"
         cp -f "/opt/pgautoupgrade/pg_hba.conf" "${PGDATA}/pg_hba.conf"
     fi
-elif [ "x${PGAUTO_ONESHOT}" = "xyes" ] && [ ! -f "/var/lib/postgresql/PG_VERSION" ]; then
+# TODO: When Postgres v20, change third condition to check for any data directories according to v18 scheme, but excluding the version we are running
+elif [ "x${PGAUTO_ONESHOT}" = "xyes" ] && [ ! -f "/var/lib/postgresql/PG_VERSION" ] && [ ! -f "/var/lib/postgresql/18/docker/PG_VERSION" ]; then
     echo "-------------------------------------------------------------------------------"
     echo "No existing Postgres data directory found at ${PGDATA}, and one shot mode was requested. Exiting."
     echo "-------------------------------------------------------------------------------"

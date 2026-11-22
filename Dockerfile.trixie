@@ -1,5 +1,5 @@
-# renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
-ARG PGTARGET=18.0
+# renovate: datasource=repology depName=homebrew/postgresql@19 versioning=loose
+ARG PGTARGET=19.0
 
 ### Things we need in all build containers
 FROM debian:trixie AS base-build
@@ -23,6 +23,9 @@ ENV PG16_VERSION=16.16
 
 # renovate: datasource=repology depName=homebrew/postgresql@17 versioning=loose
 ENV PG17_VERSION=17.12
+
+# renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
+ENV PG18_VERSION=18.7
 
 # Where we'll do all our compiling and similar
 ENV BUILD_ROOT=/buildroot
@@ -157,6 +160,22 @@ RUN cd postgresql-17.* && \
   make install-world-bin && \
   rm -rf /usr/local-pg17/include
 
+### PostgreSQL 18
+FROM base-build AS build-18
+
+RUN apt update && \
+  apt install -y bison flex && \
+  apt clean
+
+RUN wget https://ftp.postgresql.org/pub/source/v${PG18_VERSION}/postgresql-${PG18_VERSION}.tar.gz && \
+  tar -xf postgresql-18*.tar.gz
+
+RUN cd postgresql-18.* && \
+  ./configure --prefix=/usr/local-pg18 --with-openssl=no --without-readline --with-icu --with-lz4 --with-system-tzdata=/usr/share/zoneinfo --enable-debug=no CFLAGS="-Os" && \
+  make -j $(nproc) world-bin && \
+  make install-world-bin && \
+  rm -rf /usr/local-pg18/include
+
 # Use the PostgreSQL Trixie image as our output image base
 FROM postgres:${PGTARGET}-trixie
 
@@ -180,12 +199,14 @@ COPY --from=build-14 /usr/local-pg14 /usr/local-pg14
 COPY --from=build-15 /usr/local-pg15 /usr/local-pg15
 COPY --from=build-16 /usr/local-pg16 /usr/local-pg16
 COPY --from=build-17 /usr/local-pg17 /usr/local-pg17
+COPY --from=build-18 /usr/local-pg18 /usr/local-pg18
 
 # Remove any left over PG directory stubs.  Doesn't help with image size, just with clarity on what's in the image.
-RUN if [ "${PGTARGET}" == "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
-RUN if [ "${PGTARGET}" == "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16 /usr/local-pg17; fi
-RUN if [ "${PGTARGET}" == "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16 /usr/local-pg17; fi
-RUN if [ "${PGTARGET}" == "${PG17_VERSION}" ]; then rm -rf /usr/local-pg17; fi
+RUN if [ "${PGTARGET}" == "${PG14_VERSION}" ]; then rm -rf /usr/local-pg14 /usr/local-pg15 /usr/local-pg16 /usr/local-pg17 /usr/local-pg18; fi
+RUN if [ "${PGTARGET}" == "${PG15_VERSION}" ]; then rm -rf /usr/local-pg15 /usr/local-pg16 /usr/local-pg17 /usr/local-pg18; fi
+RUN if [ "${PGTARGET}" == "${PG16_VERSION}" ]; then rm -rf /usr/local-pg16 /usr/local-pg17 /usr/local-pg18; fi
+RUN if [ "${PGTARGET}" == "${PG17_VERSION}" ]; then rm -rf /usr/local-pg17 /usr/local-pg18; fi
+RUN if [ "${PGTARGET}" == "${PG18_VERSION}" ]; then rm -rf /usr/local-pg18; fi
 
 # Install locale
 RUN apt update && \

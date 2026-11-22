@@ -7,8 +7,8 @@ on:
     - cron: "0 0 * * 0"
 
 env:
-  # renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
-  LATEST_POSTGRES_VERSION: "18.7"
+  # renovate: datasource=repology depName=homebrew/postgresql@19 versioning=loose
+  LATEST_POSTGRES_VERSION: "19.0"
 
 permissions: {}
 
@@ -33,6 +33,7 @@ jobs:
           - "15"
           - "16"
           - "17"
+          - "18"
 
     steps:
       - name: Set up QEMU
@@ -79,6 +80,7 @@ jobs:
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-15-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-16-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:build-17-${{ matrix.operating_system.flavor }}
+        type=registry,ref=pgautoupgrade/pgautoupgrade:build-18-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target.PG_VERSION }}-${{ matrix.operating_system.flavor }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target.PG_VERSION }}-${{ matrix.operating_system.flavor }}${{ matrix.operating_system.OS_VERSION }}
         type=registry,ref=pgautoupgrade/pgautoupgrade:${{ matrix.pg_target.PG_VERSION }}-${{ matrix.operating_system.alias }}
@@ -103,6 +105,8 @@ jobs:
             PG_VERSION: "17.12"
           - # renovate: datasource=repology depName=homebrew/postgresql@18 versioning=loose
             PG_VERSION: "18.7"
+          - # renovate: datasource=repology depName=homebrew/postgresql@19 versioning=loose
+            PG_VERSION: "19.0"
 
     steps:
       - name: Set up QEMU

@@ -2,6 +2,10 @@
 
 # Define the path to the upgrade lock file using PGDATA if set, otherwise default
 UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql/data}/upgrade_in_progress.lock"
+# Upgrades into /var/lib/postgresql/19/docker initialise PGDATA from scratch, so the lock lives next to it
+if [ "${PGDATA:-}" = "/var/lib/postgresql/19/docker" ]; then
+	UPGRADE_LOCK_FILE="/var/lib/postgresql/19/upgrade_in_progress.lock"
+fi
 
 # Check if an upgrade is in progress and keep the container alive
 if [ -f "$UPGRADE_LOCK_FILE" ]; then
