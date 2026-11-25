@@ -363,8 +363,13 @@ _main() {
 		# Postgres v18 data already lives in its own directory, so we can upgrade straight from it into the v19 PGDATA
 		UPGRADING_FROM_V18_DIR=0
 		if [ "$PGTARGET_MAJOR" -eq 19 ] && [ "$PGDATA" == "/var/lib/postgresql/19/docker" ] \
-			&& [ -s "${V18_DATA_DIR}/PG_VERSION" ] && [ ! -s "${PGDATA}/PG_VERSION" ]; then
-			UPGRADING_FROM_V18_DIR=1
+			&& [ -s "${V18_DATA_DIR}/PG_VERSION" ]; then
+			if [ ! -s "${PGDATA}/PG_VERSION" ]; then
+				UPGRADING_FROM_V18_DIR=1
+			else
+				echo "Found both v18 data and a v19 database - a previous upgrade did not finish. Aborting, please check manually."
+				exit 1
+			fi
 		fi
 
 		# In both cases the old data is already outside of PGDATA, so we upgrade directly into PGDATA without old/new staging
@@ -381,7 +386,8 @@ _main() {
 		fi
 
 		# only run initialization on an empty data directory
-		if [ -z "$DATABASE_ALREADY_EXISTS" ]; then
+		# also skip creating a DB if a direct upgrade is about to happen
+		if [ -z "$DATABASE_ALREADY_EXISTS" ] && [ "$DIRECT_UPGRADE" -eq 0 ]; then
 			docker_verify_minimum_env
 
 			# check dir permissions to reduce likelihood of half-initialized database
