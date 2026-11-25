@@ -4,7 +4,7 @@ set -ex
 FAILURE=0
 
 # Array of PostgreSQL versions for testing
-PG_VERSIONS=(9.5 9.6 10 11 12 13 14 15 16 17 18)
+PG_VERSIONS=(9.5 9.6 10 11 12 13 14 15 16 17 18 19)
 
 # Useful output display
 banner() {
@@ -37,16 +37,25 @@ import_adventure_works() {
     docker compose -f "docker-compose-pg${VERSION}.yml" down -v
 }
 
+compose_up_wait() {
+    local compose_file=$1
+
+    if ! docker compose -f "$compose_file" up --wait -d; then
+        docker logs test-postgres-1
+        return 1
+    fi
+}
+
 test_run() {
     VERSION=$1
     TARGET=$2
     FLAVOR=$3
 
     local TARGET_MAJOR=${PGTARGET%%.*}
-    if [ "$TARGET_MAJOR" -eq 18 ]; then
-        PGAUTO_COMPOSE="docker-compose-pgauto18.yml"
-        PGTARGET_COMPOSE="docker-compose-pgtarget18.yml"
-        PGVERSION_FILE="postgres-data/18/docker/PG_VERSION"
+    if [ "$TARGET_MAJOR" -ge 18 ]; then
+        PGAUTO_COMPOSE="docker-compose-pgauto-v18plus.yml"
+        PGTARGET_COMPOSE="docker-compose-pgtarget-v18plus.yml"
+        PGVERSION_FILE="postgres-data/${TARGET_MAJOR}/docker/PG_VERSION"
     else
         PGAUTO_COMPOSE="docker-compose-pgauto.yml"
         PGTARGET_COMPOSE="docker-compose-pgtarget.yml"
@@ -62,7 +71,7 @@ test_run() {
     export TARGET_TAG="${TARGET}-${FLAVOR}"
 
     # Start an empty pgautoupgrade container to make sure this is possible as well
-    docker compose -f $PGAUTO_COMPOSE up --wait -d
+    compose_up_wait "$PGAUTO_COMPOSE"
 
     # Shut down any containers that are still running
     docker compose -f $PGAUTO_COMPOSE down --remove-orphans
@@ -73,7 +82,7 @@ test_run() {
     import_adventure_works
 
     # Start pgautoupgrade container
-    docker compose -f $PGAUTO_COMPOSE up --wait -d
+    compose_up_wait "$PGAUTO_COMPOSE"
 
     # Verify the PostgreSQL data files are now the target version
     PGVER=$(sudo cat $PGVERSION_FILE)
@@ -92,7 +101,7 @@ test_run() {
     fi
 
     # Shut down any containers that are still running
-    docker compose -f docker-compose-pgauto.yml down --remove-orphans
+    docker compose -f $PGAUTO_COMPOSE down --remove-orphans
 
     # Delete the upgraded PostgreSQL data directory
     sudo rm -rf postgres-data
