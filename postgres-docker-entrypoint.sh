@@ -4,6 +4,11 @@ set -Eeo pipefail
 
 # Define the path to the upgrade lock file using PGDATA if set, otherwise default
 UPGRADE_LOCK_FILE="${PGDATA:-/var/lib/postgresql/data}/upgrade_in_progress.lock"
+# Upgrades into /var/lib/postgresql/MAJOR/docker (v18+) initialise PGDATA from scratch, so the lock lives next to it
+if [[ "${PGDATA:-}" =~ ^/var/lib/postgresql/(1[89]|[2-9][0-9])/docker$ ]]; then
+	UPGRADE_LOCK_FILE="$(dirname "${PGDATA}")/upgrade_in_progress.lock"
+fi
+V18_DATA_DIR="/var/lib/postgresql/18/docker"
 
 # usage: file_env VAR [DEFAULT]
 #    ie: file_env 'XYZ_DB_PASSWORD' 'example'
@@ -58,10 +63,15 @@ docker_create_db_directories() {
 
 	# allow the container to be started with `--user`
 	if [ "$user" = '0' ]; then
-		if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+		if [ $DIRECT_UPGRADE -eq 1 ]; then
 			find "/var/lib/postgresql" \! -user postgres -exec chown postgres '{}' +
 		else
 			find "$PGDATA" \! -user postgres -exec chown postgres '{}' +
+		fi
+
+		# the upgrade lock file may live outside of PGDATA
+		if [ "$(dirname "$UPGRADE_LOCK_FILE")" != "$PGDATA" ]; then
+			chown postgres "$(dirname "$UPGRADE_LOCK_FILE")"
 		fi
 
 		find /var/run/postgresql \! -user postgres -exec chown postgres '{}' +
@@ -346,8 +356,26 @@ _main() {
 
 		PGTARGET_MAJOR=${PGTARGET%%.*}
 		MOVING_TO_NEW_STRUCTURE=0
-		if [ -s "/var/lib/postgresql/PG_VERSION" ] && [ "$PGTARGET_MAJOR" -eq 18 ] && [ "$PGDATA" == "/var/lib/postgresql/18/docker" ]; then
+		if [ -s "/var/lib/postgresql/PG_VERSION" ] && [ "$PGTARGET_MAJOR" -ge 18 ] && [ "$PGDATA" == "/var/lib/postgresql/${PGTARGET_MAJOR}/docker" ]; then
 			MOVING_TO_NEW_STRUCTURE=1
+		fi
+
+		# Postgres v18 data already lives in its own directory, so we can upgrade straight from it into the v19 PGDATA
+		UPGRADING_FROM_V18_DIR=0
+		if [ "$PGTARGET_MAJOR" -eq 19 ] && [ "$PGDATA" == "/var/lib/postgresql/19/docker" ] \
+			&& [ -s "${V18_DATA_DIR}/PG_VERSION" ]; then
+			if [ ! -s "${PGDATA}/PG_VERSION" ]; then
+				UPGRADING_FROM_V18_DIR=1
+			else
+				echo "Found both v18 data and a v19 database - a previous upgrade did not finish. Aborting, please check manually."
+				exit 1
+			fi
+		fi
+
+		# In both cases the old data is already outside of PGDATA, so we upgrade directly into PGDATA without old/new staging
+		DIRECT_UPGRADE=0
+		if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ] || [ $UPGRADING_FROM_V18_DIR -eq 1 ]; then
+			DIRECT_UPGRADE=1
 		fi
 
 		# setup data directories and permissions (when run as root)
@@ -358,7 +386,8 @@ _main() {
 		fi
 
 		# only run initialization on an empty data directory
-		if [ -z "$DATABASE_ALREADY_EXISTS" ]; then
+		# also skip creating a DB if a direct upgrade is about to happen
+		if [ -z "$DATABASE_ALREADY_EXISTS" ] && [ "$DIRECT_UPGRADE" -eq 0 ]; then
 			docker_verify_minimum_env
 
 			# check dir permissions to reduce likelihood of half-initialized database
@@ -412,7 +441,9 @@ _main() {
 		# Get the version of the PostgreSQL data files
 		local PGVER=${PGTARGET%%.*}
 
-		if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+		if [ $UPGRADING_FROM_V18_DIR -eq 1 ]; then
+			PGVER=$(cat "${V18_DATA_DIR}/PG_VERSION")
+		elif [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
 			PGVER=$(cat "/var/lib/postgresql/PG_VERSION")
 		elif [ -s "${PGDATA}/PG_VERSION" ]; then
 			PGVER=$(cat "${PGDATA}/PG_VERSION")
@@ -441,6 +472,9 @@ _main() {
 			if [ "${PGTARGET_MAJOR}" -gt 17 ] && [ "${PGVER}" = "17" ]; then
 				RECOGNISED=1
 			fi
+			if [ "${PGTARGET_MAJOR}" -gt 18 ] && [ "${PGVER}" = "18" ]; then
+				RECOGNISED=1
+			fi
 			if [ "${RECOGNISED}" -eq 1 ]; then
 				OLDPATH="/usr/local-pg${PGVER}"
 				echo "*******************************************************************************************"
@@ -459,14 +493,22 @@ _main() {
 			echo "----------------------------------------------------------------------"
 			local OLD="${PGDATA}/old"
 			NEW="${PGDATA}/new"
+			if [ $UPGRADING_FROM_V18_DIR -eq 1 ]; then
+				OLD="${V18_DATA_DIR}"
+			elif [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+				OLD="/var/lib/postgresql"
+			fi
+			if [ $DIRECT_UPGRADE -eq 1 ]; then
+				NEW="${PGDATA}"
+			fi
 
-			if [ -d "${OLD}" ]; then
+			if [ $DIRECT_UPGRADE -eq 0 ] && [ -d "${OLD}" ]; then
 				echo "*****************************************"
 				echo "Left over OLD directory found.  Aborting."
 				echo "*****************************************"
 				exit 10
 			fi
-			if [ -d "${NEW}" ]; then
+			if [ $DIRECT_UPGRADE -eq 0 ] && [ -d "${NEW}" ]; then
 				echo "*****************************************"
 				echo "Left over NEW directory found.  Aborting."
 				echo "*****************************************"
@@ -483,94 +525,84 @@ _main() {
 				exec gosu postgres "$BASH_SOURCE" "$@"
 			fi
 
-			if [[ "$MOVING_TO_NEW_STRUCTURE" -eq 1 && -d "$PGDATA" ]]; then
-				echo "-------------------------------------------------------------------------------"
-				echo "Emptying out existing PGDATA directory at ${PGDATA} prior to moving data to new structure."
-				echo "-------------------------------------------------------------------------------"
-				rm -rf "${PGDATA:?}/"*
-			fi
-
 			create_upgrade_lock_file
+
+			if [[ "$DIRECT_UPGRADE" -eq 1 && -d "$PGDATA" ]]; then
+				echo "-------------------------------------------------------------------------------"
+				echo "Emptying out existing PGDATA directory at ${PGDATA} prior to upgrading into the new structure."
+				echo "-------------------------------------------------------------------------------"
+				find "${PGDATA}" -mindepth 1 -maxdepth 1 -not -name "upgrade_in_progress.lock" -exec rm -rf {} +
+			fi
 
 			# Don't automatically abort on non-0 exit status, as that messes with these upcoming mv commands
 			set +e
 
-			# Move the PostgreSQL data files into a subdirectory of the mount point
-			echo "---------------------------------------"
-			echo "Creating OLD temporary directory ${OLD}"
-			echo "---------------------------------------"
-			mkdir "${OLD}"
-			if [ ! -d "${OLD}" ]; then
-				echo "*********************************************************************"
-				echo "Creation of temporary directory '${OLD}' failed.  Aborting completely"
-				echo "*********************************************************************"
-				exit 7
-			fi
-			echo "--------------------------------------------"
-			echo "Creating OLD temporary directory is complete"
-			echo "--------------------------------------------"
+			if [ $DIRECT_UPGRADE -eq 0 ]; then
+				# Move the PostgreSQL data files into a subdirectory of the mount point
+				echo "---------------------------------------"
+				echo "Creating OLD temporary directory ${OLD}"
+				echo "---------------------------------------"
+				mkdir "${OLD}"
+				if [ ! -d "${OLD}" ]; then
+					echo "*********************************************************************"
+					echo "Creation of temporary directory '${OLD}' failed.  Aborting completely"
+					echo "*********************************************************************"
+					exit 7
+				fi
+				echo "--------------------------------------------"
+				echo "Creating OLD temporary directory is complete"
+				echo "--------------------------------------------"
 
-			echo "-------------------------------------------------------"
-			echo "Moving existing data files into OLD temporary directory"
-			echo "-------------------------------------------------------"
-			if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
+				echo "-------------------------------------------------------"
+				echo "Moving existing data files into OLD temporary directory"
+				echo "-------------------------------------------------------"
 				find "${PGDATA}" \
 					-mindepth 1 -maxdepth 1 \
 					-not -name "old" \
 					-not -name "upgrade_in_progress.lock" \
 					-exec mv {} "${OLD}/" \;
-			else
-				find /var/lib/postgresql \
-					-mindepth 1 -maxdepth 1 \
-					-not -name 18 \
-					-not -name "upgrade_in_progress.lock" \
-					-exec mv {} "${OLD}/" \;
-			fi
-			echo "-------------------------------------------------------------------"
-			echo "Moving existing data files into OLD temporary directory is complete"
-			echo "-------------------------------------------------------------------"
+				echo "-------------------------------------------------------------------"
+				echo "Moving existing data files into OLD temporary directory is complete"
+				echo "-------------------------------------------------------------------"
 
-			echo "---------------------------------------"
-			echo "Creating NEW temporary directory ${NEW}"
-			echo "---------------------------------------"
-			mkdir "${NEW}"
-			if [ ! -d "${NEW}" ]; then
-				echo "********************************************************************"
-				echo "Creation of temporary directory '${NEW}' failed. Aborting completely"
-				echo "********************************************************************"
-				# With a failure at this point we should be able to move the old data back
-				# to its original location
-				if [ $MOVING_TO_NEW_STRUCTURE -eq 0 ]; then
+				echo "---------------------------------------"
+				echo "Creating NEW temporary directory ${NEW}"
+				echo "---------------------------------------"
+				mkdir "${NEW}"
+				if [ ! -d "${NEW}" ]; then
+					echo "********************************************************************"
+					echo "Creation of temporary directory '${NEW}' failed. Aborting completely"
+					echo "********************************************************************"
+					# With a failure at this point we should be able to move the old data back
+					# to its original location
 					mv -v "${OLD}"/* "${PGDATA}"
-				else
-					mv -v "${OLD}"/* "/var/lib/postgresql"
+					rmdir old
+					exit 8
 				fi
-				rmdir old
-				exit 8
-			fi
-			echo "--------------------------------------------"
-			echo "Creating NEW temporary directory is complete"
-			echo "--------------------------------------------"
+				echo "--------------------------------------------"
+				echo "Creating NEW temporary directory is complete"
+				echo "--------------------------------------------"
 
-			echo "-----------------------------------------------------"
-			echo "Changing permissions of temporary directories to 0700"
-			echo "-----------------------------------------------------"
-			chmod 0700 "${OLD}" "${NEW}"
-			echo "---------------------------------------------------------"
-			echo "Changing permissions of temporary directories is complete"
-			echo "---------------------------------------------------------"
+				echo "-----------------------------------------------------"
+				echo "Changing permissions of temporary directories to 0700"
+				echo "-----------------------------------------------------"
+				chmod 0700 "${OLD}" "${NEW}"
+				echo "---------------------------------------------------------"
+				echo "Changing permissions of temporary directories is complete"
+				echo "---------------------------------------------------------"
+			fi
 
 			# Return the error handling back to automatically aborting on non-0 exit status
 			set -e
 
 			# Remove 'postgres' element from 'postgres --runtime-option vars'
-			# e.g. "postgres -c wal_level=logical" --> "-c wal_level=logical" 
+			# e.g. "postgres -c wal_level=logical" --> "-c wal_level=logical"
 			local run_options=("${@:2}")
 
 			# On PG v18, we have to check that data checksums, be it positive or negative, is set on the initdb args
 			# even when the user already provided initdb args, because otherwise Postgres v18 assumes you want checksums
 			# we now do this on every version to avoid one more conditional
-			# it also adds support for people who used Postgres with checksums before v18			
+			# it also adds support for people who used Postgres with checksums before v18
 			local DATA_CHECKSUMS_ENABLED
 			local DATA_CHECKSUMS_PARAMETER
 
@@ -579,8 +611,8 @@ _main() {
 
 				if [ "$DATA_CHECKSUMS_ENABLED" == "on" ]; then
 					DATA_CHECKSUMS_PARAMETER="--data-checksums"
-				elif [ "$PGTARGET_MAJOR" -eq 18 ]; then
-					# Postgres v18 enables data checksums by default and is the only version with this opt-out parameter
+				elif [ "$PGTARGET_MAJOR" -ge 18 ]; then
+					# Postgres v18+ enables data checksums by default and is the only version with this opt-out parameter
 					DATA_CHECKSUMS_PARAMETER="--no-data-checksums"
 				fi
 			fi
@@ -609,7 +641,7 @@ _main() {
 				local COLLATE=unset
 				local CTYPE=unset
 				local ENCODING=unset
-				
+
 				ENCODING=$(echo 'SHOW SERVER_ENCODING' | "${OLDPATH}/bin/postgres" --single "${run_options[@]}" -D "${OLD}" "${POSTGRES_DB}" | grep 'server_encoding = "' | cut -d '"' -f 2)
 
 				# LC_COLLATE and LC_TYPE have been removed with PG v16
@@ -649,12 +681,30 @@ _main() {
 			echo "---------------------------------------"
 			bin_path=$(get_bin_path)
 			export PGPASSWORD="${PGPASSWORD:-$POSTGRES_PASSWORD}"
-			"${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link \
+			if "${bin_path}/pg_upgrade" --username="${POSTGRES_USER}" --link \
 			  --old-datadir "${OLD}" --new-datadir "${NEW}" \
 			  --old-bindir "${OLDPATH}/bin" --new-bindir "${bin_path}" \
 			  --socketdir="/var/run/postgresql" \
-			  --old-options "${run_options[*]}" --new-options "${run_options[*]}"
+			  --old-options "${run_options[*]}" --new-options "${run_options[*]}"; then
+				pg_upgrade_status=0
+			else
+				pg_upgrade_status=$?
+			fi
 			unset PGPASSWORD
+			if [ "$pg_upgrade_status" -ne 0 ]; then
+				echo "******************************************************"
+				echo "pg_upgrade failed. Printing upgrade diagnostic files:"
+				echo "******************************************************"
+				if [ -d "${NEW}/pg_upgrade_output.d" ]; then
+					while IFS= read -r -d '' log_file; do
+						echo "----- ${log_file} -----"
+						cat "${log_file}" || true
+					done < <(find "${NEW}/pg_upgrade_output.d" -type f -name '*.log' -print0 | sort -z)
+				else
+					echo "No pg_upgrade diagnostic directory found at ${NEW}/pg_upgrade_output.d"
+				fi
+				exit "$pg_upgrade_status"
+			fi
 			echo "--------------------------------------"
 			echo "Running pg_upgrade command is complete"
 			echo "--------------------------------------"
@@ -665,7 +715,9 @@ _main() {
 			echo "-----------------------------------------------------"
 			# Use -l to create hardlinks, since they're already used by pg_upgrade --link.
 			# This prevents copying all of the data, saving time and disk space.
-			cp -l -r "${NEW}"/* "${PGDATA}"
+			if [ $DIRECT_UPGRADE -eq 0 ]; then
+				cp -l -r "${NEW}"/* "${PGDATA}"
+			fi
 			echo "-----------------------------------------"
 			echo "Moving the new database files is complete"
 			echo "-----------------------------------------"
@@ -683,7 +735,19 @@ _main() {
 			echo "---------------------------------"
 			echo "Removing left over database files"
 			echo "---------------------------------"
-			rm -rf "${OLD}" "${NEW}" ~/delete_old_cluster.sh
+			if [ $DIRECT_UPGRADE -eq 0 ]; then
+				rm -rf "${OLD}" "${NEW}" ~/delete_old_cluster.sh
+			else
+				rm -f "${PGDATA}/delete_old_cluster.sh" ~/delete_old_cluster.sh
+				if [ $MOVING_TO_NEW_STRUCTURE -eq 1 ]; then
+					# The old data sits next to the new PGDATA, and is unusable after pg_upgrade --link anyway
+					find /var/lib/postgresql \
+						-mindepth 1 -maxdepth 1 \
+						-not -name "${PGTARGET_MAJOR}" \
+						-not -name "upgrade_in_progress.lock" \
+						-exec rm -rf {} +
+				fi
+			fi
 			echo "---------------------------------------------"
 			echo "Removing left over database files is complete"
 			echo "---------------------------------------------"
@@ -726,7 +790,7 @@ _main() {
 				else
 					reindexdb --all --concurrently --username="${POSTGRES_USER}"
 				fi
-				
+
 				echo "-------------------------------"
 				echo "End of reindexing the databases"
 				echo "-------------------------------"
@@ -738,6 +802,14 @@ _main() {
 			echo "*******************************************"
 			echo "Upgrade to PostgreSQL ${PGTARGET} complete."
 			echo "*******************************************"
+
+			if [ $UPGRADING_FROM_V18_DIR -eq 1 ]; then
+				echo "*************************************************************"
+				echo "Deleting previous Postgres v18 data directory ${V18_DATA_DIR}"
+				echo "*************************************************************"
+				rm -rf "${V18_DATA_DIR:?}"
+				rmdir "$(dirname "${V18_DATA_DIR}")" 2>/dev/null || true
+			fi
 
 			remove_upgrade_lock_file
 		fi
